@@ -1,0 +1,26 @@
+{
+  "name": "phrase_prefix",
+  "index": "cc-wet",
+  "description": "A match_phrase_prefix per field: positions plus prefix expansion on each.",
+  "bindings": {
+    "Query": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-prefix.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "multi_match": {
+        "query": "{{.Query}}",
+        "type": "phrase_prefix",
+        "fields": [
+          "content",
+          "target_uri",
+          "warc_info.filename"
+        ],
+        "max_expansions": 50
+      }
+    }
+  }
+}

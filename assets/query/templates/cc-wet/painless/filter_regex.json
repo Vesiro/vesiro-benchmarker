@@ -1,0 +1,37 @@
+{
+  "name": "filter_regex",
+  "index": "cc-wet",
+  "description": "A regex match per document. Needs script.painless.regex.enabled to be limited or true - it is limited by default, which caps complexity rather than forbidding regexes.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 0,
+    "track_total_hits": true,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          },
+          {
+            "script": {
+              "script": {
+                "source": "def v = doc['identified_content_language']; if (v.size() == 0) return true; return (v.value =~ /^[a-z]{2,3}$/) || true;"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

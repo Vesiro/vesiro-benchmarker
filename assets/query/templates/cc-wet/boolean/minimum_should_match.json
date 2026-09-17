@@ -1,0 +1,98 @@
+{
+  "name": "minimum_should_match",
+  "index": "cc-wet",
+  "description": "Nine should clauses of which at least three must match. Exercises the WAND/block-max short-circuit path rather than a plain union.",
+  "bindings": {
+    "Term1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term3": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term4": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term5": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term6": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term7": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term8": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term9": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "should": [
+          {
+            "match": {
+              "content": "{{.Term1}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term2}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term3}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term4}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term5}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term6}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term7}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term8}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term9}}"
+            }
+          }
+        ],
+        "minimum_should_match": 3
+      }
+    }
+  }
+}

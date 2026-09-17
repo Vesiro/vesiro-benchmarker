@@ -1,0 +1,51 @@
+{
+  "name": "span_not",
+  "index": "cc-wet",
+  "description": "A near-span with a second span excluded from a window around it. Both sides are evaluated positionally, then subtracted.",
+  "bindings": {
+    "Word1": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    },
+    "Word2": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    },
+    "Word3": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "span_not": {
+        "include": {
+          "span_near": {
+            "clauses": [
+              {
+                "span_term": {
+                  "content": "{{.Word1}}"
+                }
+              },
+              {
+                "span_term": {
+                  "content": "{{.Word2}}"
+                }
+              }
+            ],
+            "slop": 5,
+            "in_order": false
+          }
+        },
+        "exclude": {
+          "span_term": {
+            "content": "{{.Word3}}"
+          }
+        },
+        "pre": 2,
+        "post": 2
+      }
+    }
+  }
+}

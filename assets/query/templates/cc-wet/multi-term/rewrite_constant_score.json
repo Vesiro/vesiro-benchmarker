@@ -1,0 +1,22 @@
+{
+  "name": "rewrite_constant_score",
+  "index": "cc-wet",
+  "description": "Prefix query pinned to the 'constant_score' rewrite. Rewrites to a single constant-scoring bitset over all expansions.",
+  "bindings": {
+    "Prefix": {
+      "source": "file",
+      "path": "./assets/query/terms/prefix-3.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "prefix": {
+        "content": {
+          "value": "{{.Prefix}}",
+          "rewrite": "constant_score"
+        }
+      }
+    }
+  }
+}

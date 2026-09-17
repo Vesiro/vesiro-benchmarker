@@ -1,0 +1,24 @@
+{
+  "name": "fuzzy",
+  "index": "cc-wet",
+  "description": "Fuzzy term with AUTO edit distance over deliberately misspelled terms, so the Levenshtein automaton actually has work to do.",
+  "bindings": {
+    "Fuzzy": {
+      "source": "file",
+      "path": "./assets/query/terms/fuzzy.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "fuzzy": {
+        "content": {
+          "value": "{{.Fuzzy}}",
+          "fuzziness": "AUTO",
+          "prefix_length": 1,
+          "max_expansions": 50
+        }
+      }
+    }
+  }
+}

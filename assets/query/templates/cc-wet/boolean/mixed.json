@@ -1,0 +1,81 @@
+{
+  "name": "mixed",
+  "index": "cc-wet",
+  "description": "All four clause types at once: scored must and should clauses alongside a cached filter and a must_not exclusion.",
+  "bindings": {
+    "Term1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term3": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term4": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Language": {
+      "source": "file",
+      "path": "./assets/query/terms/languages.txt"
+    },
+    "DateRange": {
+      "source": "file",
+      "path": "./assets/query/terms/date-ranges-iso.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "content": "{{.Term1}}"
+            }
+          }
+        ],
+        "should": [
+          {
+            "match": {
+              "content": "{{.Term2}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term3}}"
+            }
+          }
+        ],
+        "minimum_should_match": 1,
+        "filter": [
+          {
+            "term": {
+              "identified_content_language": "{{.Language}}"
+            }
+          },
+          {
+            "range": {
+              "date": {
+                "gte": "{{index .DateRange 0}}",
+                "lt": "{{index .DateRange 1}}"
+              }
+            }
+          }
+        ],
+        "must_not": [
+          {
+            "match": {
+              "content": "{{.Term4}}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

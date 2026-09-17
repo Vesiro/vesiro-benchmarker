@@ -1,0 +1,25 @@
+{
+  "name": "bool_prefix",
+  "index": "cc-wet",
+  "description": "A match_bool_prefix per field: prefix expansion without positions.",
+  "bindings": {
+    "Query": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-prefix.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "multi_match": {
+        "query": "{{.Query}}",
+        "type": "bool_prefix",
+        "fields": [
+          "content",
+          "target_uri",
+          "warc_info.filename"
+        ]
+      }
+    }
+  }
+}

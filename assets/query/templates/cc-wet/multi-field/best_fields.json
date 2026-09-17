@@ -1,0 +1,25 @@
+{
+  "name": "best_fields",
+  "index": "cc-wet",
+  "description": "The default: runs the query against each field separately and scores on the single best-matching field. Cost is roughly one match query per field.",
+  "bindings": {
+    "Query": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-2.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "multi_match": {
+        "query": "{{.Query}}",
+        "type": "best_fields",
+        "fields": [
+          "content",
+          "target_uri",
+          "warc_info.filename"
+        ]
+      }
+    }
+  }
+}

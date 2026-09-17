@@ -1,0 +1,40 @@
+{
+  "name": "sort_script_string",
+  "index": "cc-wet",
+  "description": "Sorts by a script-computed string. String comparison and allocation on top of the same per-document invocation count as the numeric sort.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 10,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "sort": [
+      {
+        "_script": {
+          "type": "string",
+          "order": "desc",
+          "script": {
+            "source": "doc['identified_content_language'].size() == 0 ? 'zzz' : doc['identified_content_language'].value"
+          }
+        }
+      }
+    ]
+  }
+}

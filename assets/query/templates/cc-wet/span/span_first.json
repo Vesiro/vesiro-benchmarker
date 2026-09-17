@@ -1,0 +1,24 @@
+{
+  "name": "span_first",
+  "index": "cc-wet",
+  "description": "A span term restricted to the first 30 positions of the field. Cheap to reject: most candidates fail on position alone.",
+  "bindings": {
+    "Word1": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "span_first": {
+        "match": {
+          "span_term": {
+            "content": "{{.Word1}}"
+          }
+        },
+        "end": 30
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "match_fuzzy",
+  "index": "cc-wet",
+  "description": "Match with AUTO fuzziness over misspelled terms. Each term expands through a Levenshtein automaton before the boolean rewrite.",
+  "bindings": {
+    "Fuzzy": {
+      "source": "file",
+      "path": "./assets/query/terms/fuzzy.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "match": {
+        "content": {
+          "query": "{{.Fuzzy}}",
+          "fuzziness": "AUTO",
+          "prefix_length": 1,
+          "max_expansions": 50
+        }
+      }
+    }
+  }
+}

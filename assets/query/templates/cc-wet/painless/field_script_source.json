@@ -1,0 +1,36 @@
+{
+  "name": "field_script_source",
+  "index": "cc-wet",
+  "description": "The same shape reading params['_source'] instead of doc values. Source access decompresses and parses the stored document per hit - the single most expensive thing a script can do, and the reason doc values exist.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 100,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "script_fields": {
+      "uri_len": {
+        "script": {
+          "source": "params['_source']['target_uri'] == null ? 0 : params['_source']['target_uri'].length()"
+        }
+      }
+    }
+  }
+}

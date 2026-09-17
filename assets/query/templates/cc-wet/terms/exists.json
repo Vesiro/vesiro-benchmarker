@@ -1,0 +1,14 @@
+{
+  "name": "exists",
+  "index": "cc-wet",
+  "description": "Field-existence check on a keyword field, which reads the _field_names / doc values path rather than a term postings list.",
+  "bindings": {},
+  "template": {
+    "_source": false,
+    "query": {
+      "exists": {
+        "field": "identified_content_language"
+      }
+    }
+  }
+}

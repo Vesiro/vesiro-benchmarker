@@ -1,0 +1,21 @@
+{
+  "name": "match_bool_prefix",
+  "index": "cc-wet",
+  "description": "Every term but the last as a term query, the last as a prefix, combined in a bool should. No position data is read, unlike match_phrase_prefix.",
+  "bindings": {
+    "Phrase": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-prefix.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "match_bool_prefix": {
+        "content": {
+          "query": "{{.Phrase}}"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "score_baseline",
+  "index": "cc-wet",
+  "description": "Returns a constant score. The invocation floor for script_score, the same role filter_baseline plays for filter context.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    },
+    "Term": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 10,
+    "query": {
+      "script_score": {
+        "query": {
+          "bool": {
+            "filter": [
+              {
+                "range": {
+                  "date": {
+                    "gte": "{{.Day}}||/d",
+                    "lt": "{{.Day}}||/d+1d"
+                  }
+                }
+              }
+            ],
+            "must": [
+              {
+                "match": {
+                  "content": "{{.Term}}"
+                }
+              }
+            ]
+          }
+        },
+        "script": {
+          "source": "return 1.0;"
+        }
+      }
+    }
+  }
+}

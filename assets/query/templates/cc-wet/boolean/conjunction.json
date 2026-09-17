@@ -1,0 +1,43 @@
+{
+  "name": "conjunction",
+  "index": "cc-wet",
+  "description": "Three-clause bool.must over the analysed text field. Every clause must match, so the cost is dominated by intersecting three postings lists.",
+  "bindings": {
+    "Term1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term3": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "content": "{{.Term1}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term2}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term3}}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

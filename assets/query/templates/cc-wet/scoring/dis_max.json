@@ -1,0 +1,43 @@
+{
+  "name": "dis_max",
+  "index": "cc-wet",
+  "description": "Three alternatives scored independently, keeping the best plus a tie_breaker share of the rest. Every clause is fully evaluated, unlike a bool.should with minimum_should_match.",
+  "bindings": {
+    "Word1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Word2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Word3": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "query": {
+      "dis_max": {
+        "tie_breaker": 0.3,
+        "queries": [
+          {
+            "match": {
+              "content": "{{.Word1}}"
+            }
+          },
+          {
+            "match": {
+              "target_uri": "{{.Word2}}"
+            }
+          },
+          {
+            "match": {
+              "warc_info.filename": "{{.Word3}}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

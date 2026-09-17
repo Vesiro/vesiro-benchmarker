@@ -1,0 +1,19 @@
+{
+  "name": "wrapper",
+  "index": "cc-wet",
+  "description": "A base64-wrapped match query. The payload has to be decoded and parsed on every request, which is the only thing this template adds over a plain match.",
+  "bindings": {
+    "Wrapped": {
+      "source": "file",
+      "path": "./assets/query/terms/wrapper-queries-b64.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "wrapper": {
+        "query": "{{.Wrapped}}"
+      }
+    }
+  }
+}

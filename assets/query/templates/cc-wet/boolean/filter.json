@@ -1,0 +1,51 @@
+{
+  "name": "filter",
+  "index": "cc-wet",
+  "description": "The same clauses as conjunction, but in filter context: no scoring, and the results are eligible for the query cache.",
+  "bindings": {
+    "Term1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Language": {
+      "source": "file",
+      "path": "./assets/query/terms/languages.txt"
+    },
+    "DateRange": {
+      "source": "file",
+      "path": "./assets/query/terms/date-ranges-iso.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "match": {
+              "content": "{{.Term1}}"
+            }
+          },
+          {
+            "term": {
+              "identified_content_language": "{{.Language}}"
+            }
+          },
+          {
+            "range": {
+              "date": {
+                "gte": "{{index .DateRange 0}}",
+                "lt": "{{index .DateRange 1}}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

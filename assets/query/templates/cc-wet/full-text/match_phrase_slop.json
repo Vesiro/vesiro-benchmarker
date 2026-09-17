@@ -1,0 +1,22 @@
+{
+  "name": "match_phrase_slop",
+  "index": "cc-wet",
+  "description": "Three-term phrase with slop 3. Slop widens the position window the phrase matcher has to consider per candidate document.",
+  "bindings": {
+    "Phrase": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-3.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "match_phrase": {
+        "content": {
+          "query": "{{.Phrase}}",
+          "slop": 3
+        }
+      }
+    }
+  }
+}

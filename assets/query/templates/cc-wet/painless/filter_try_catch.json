@@ -1,0 +1,40 @@
+{
+  "name": "filter_try_catch",
+  "index": "cc-wet",
+  "description": "A try/catch that actually throws and catches per document. The divisor comes from params because Painless constant-folds 1/0 and rejects it at compile time. Exception construction is expensive; this is the template that says how expensive.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 0,
+    "track_total_hits": true,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          },
+          {
+            "script": {
+              "script": {
+                "source": "try { int z = 1 / params.zero; } catch (ArithmeticException e) { return true; } return true;",
+                "params": {
+                  "zero": 0
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "constant_score",
+  "index": "cc-wet",
+  "description": "Wraps a filter so every match scores the same. Removes term-statistics lookups from the hot path and makes the inner clause cacheable.",
+  "bindings": {
+    "Word": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "query": {
+      "constant_score": {
+        "filter": {
+          "match": {
+            "content": "{{.Word}}"
+          }
+        },
+        "boost": 1.2
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "settings": {
+    "index": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    }
+  },
+  "mappings": {
+    "properties": {
+      "content": { "type": "text" },
+      "content_length": { "type": "long" },
+      "content_type": { "type": "keyword" },
+      "version": { "type": "keyword" },
+      "block_digest": { "type": "keyword" },
+      "date": { "type": "date" },
+      "identified_content_language": { "type": "keyword" },
+      "record_id": { "type": "keyword" },
+      "refers_to": { "type": "keyword" },
+      "target_uri": {
+        "type": "text",
+        "fields": {
+          "keyword": { "type": "keyword", "ignore_above": 256 }
+        }
+      },
+      "warc_type": { "type": "keyword" },
+      "warc_info": {
+        "properties": {
+          "content": { "type": "text" },
+          "content_length": { "type": "long" },
+          "content_type": { "type": "keyword" },
+          "version": { "type": "keyword" },
+          "date": { "type": "date" },
+          "filename": {
+            "type": "text",
+            "fields": {
+              "keyword": { "type": "keyword", "ignore_above": 256 }
+            }
+          },
+          "record_id": { "type": "keyword" },
+          "warc_type": { "type": "keyword" }
+        }
+      }
+    }
+  }
+}

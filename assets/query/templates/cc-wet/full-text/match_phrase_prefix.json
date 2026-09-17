@@ -1,0 +1,22 @@
+{
+  "name": "match_phrase_prefix",
+  "index": "cc-wet",
+  "description": "Phrase where the last term is a prefix. Combines position matching with term expansion, capped by max_expansions.",
+  "bindings": {
+    "Phrase": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-prefix.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "match_phrase_prefix": {
+        "content": {
+          "query": "{{.Phrase}}",
+          "max_expansions": 50
+        }
+      }
+    }
+  }
+}

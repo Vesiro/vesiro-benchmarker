@@ -1,0 +1,20 @@
+{
+  "name": "terms_large",
+  "index": "cc-wet",
+  "description": "Sixty-four-value terms lookup. Above the terms-query threshold Elasticsearch switches from a boolean rewrite to a bitset, so this measures a different path than the eight-value template.",
+  "bindings": {
+    "Terms": {
+      "source": "file",
+      "path": "./assets/query/terms/terms-64.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "terms": {
+        "content": "___RAWJSON___{{toJson .Terms}}___RAWJSON___"
+      }
+    }
+  }
+}

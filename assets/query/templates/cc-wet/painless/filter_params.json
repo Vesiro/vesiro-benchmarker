@@ -1,0 +1,48 @@
+{
+  "name": "filter_params",
+  "index": "cc-wet",
+  "description": "Reads scalar and nested values out of params. params is a Map lookup per access, not a compile-time constant, which is why hoisting values out of loops matters.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 0,
+    "track_total_hits": true,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          },
+          {
+            "script": {
+              "script": {
+                "source": "return params.threshold >= 0 && params.nested.a == 1 && params.list.size() == 3;",
+                "params": {
+                  "threshold": 100,
+                  "nested": {
+                    "a": 1
+                  },
+                  "list": [
+                    1,
+                    2,
+                    3
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

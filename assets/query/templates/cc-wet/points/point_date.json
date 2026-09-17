@@ -1,0 +1,19 @@
+{
+  "name": "point_date",
+  "index": "cc-wet",
+  "description": "Exact-value term query on a date field. Same point-tree descent as the numeric template, with the extra cost of parsing the date on the way in.",
+  "bindings": {
+    "Date": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "term": {
+        "date": "{{.Date}}"
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "span_containing",
+  "index": "cc-wet",
+  "description": "Returns the enclosing near-span only where it contains a third term. The big and little spans are both materialised and then compared. Bound to high-frequency terms with a wide slop: three arbitrary terms co-occurring inside one span is rare enough that rarer bindings measure the empty path instead.",
+  "bindings": {
+    "Word1": {
+      "source": "file",
+      "path": "./assets/query/terms/frequent-terms.txt"
+    },
+    "Word2": {
+      "source": "file",
+      "path": "./assets/query/terms/frequent-terms.txt"
+    },
+    "Word3": {
+      "source": "file",
+      "path": "./assets/query/terms/frequent-terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "span_containing": {
+        "big": {
+          "span_near": {
+            "clauses": [
+              {
+                "span_term": {
+                  "content": "{{.Word1}}"
+                }
+              },
+              {
+                "span_term": {
+                  "content": "{{.Word2}}"
+                }
+              }
+            ],
+            "slop": 20,
+            "in_order": false
+          }
+        },
+        "little": {
+          "span_term": {
+            "content": "{{.Word3}}"
+          }
+        }
+      }
+    }
+  }
+}

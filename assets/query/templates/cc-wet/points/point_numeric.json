@@ -1,0 +1,19 @@
+{
+  "name": "point_numeric",
+  "index": "cc-wet",
+  "description": "Exact-value term query on a long field. It compiles to a point range with equal bounds, so it measures BKD tree descent rather than postings iteration.",
+  "bindings": {
+    "Length": {
+      "source": "file",
+      "path": "./assets/query/terms/content-length-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "term": {
+        "content_length": "___RAWJSON___{{.Length}}___RAWJSON___"
+      }
+    }
+  }
+}

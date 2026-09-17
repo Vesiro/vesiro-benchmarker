@@ -1,0 +1,26 @@
+{
+  "name": "script_score",
+  "index": "cc-wet",
+  "description": "Replaces the score of an inner query with a script result. Unlike the script filter this runs only on matches, so it separates scoring cost from filtering cost.",
+  "bindings": {
+    "Word": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "script_score": {
+        "query": {
+          "match": {
+            "content": "{{.Word}}"
+          }
+        },
+        "script": {
+          "source": "Math.log(2 + doc['content_length'].value)"
+        }
+      }
+    }
+  }
+}

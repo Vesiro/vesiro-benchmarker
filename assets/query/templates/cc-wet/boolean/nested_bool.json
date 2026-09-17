@@ -1,0 +1,113 @@
+{
+  "name": "nested_bool",
+  "index": "cc-wet",
+  "description": "Three levels of nested bool. Measures the per-clause overhead of deep boolean trees on top of the same leaf clauses the flat templates use.",
+  "bindings": {
+    "Term1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term3": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term4": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term5": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term6": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Language": {
+      "source": "file",
+      "path": "./assets/query/terms/languages.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "match": {
+                    "content": "{{.Term1}}"
+                  }
+                },
+                {
+                  "match": {
+                    "content": "{{.Term2}}"
+                  }
+                }
+              ],
+              "minimum_should_match": 1
+            }
+          },
+          {
+            "bool": {
+              "must": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "match": {
+                          "content": "{{.Term3}}"
+                        }
+                      },
+                      {
+                        "match": {
+                          "content": "{{.Term4}}"
+                        }
+                      }
+                    ],
+                    "minimum_should_match": 1
+                  }
+                },
+                {
+                  "bool": {
+                    "must_not": [
+                      {
+                        "match": {
+                          "content": "{{.Term5}}"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "filter": [
+                {
+                  "term": {
+                    "identified_content_language": "{{.Language}}"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "should": [
+          {
+            "match": {
+              "content": "{{.Term6}}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

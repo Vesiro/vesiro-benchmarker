@@ -1,0 +1,13 @@
+# Compiled binaries
+/bin/
+/bench
+
+# Go test and coverage output
+*.test
+*.out
+
+# Local flag defaults picked up by kong, not meant to be shared
+/config.json
+
+# Release archives
+/dist/

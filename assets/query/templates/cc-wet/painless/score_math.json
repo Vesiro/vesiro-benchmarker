@@ -1,0 +1,47 @@
+{
+  "name": "score_math",
+  "index": "cc-wet",
+  "description": "A heavier maths expression per hit, to show how script_score scales with expression size rather than with hit count.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    },
+    "Term": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 10,
+    "query": {
+      "script_score": {
+        "query": {
+          "bool": {
+            "filter": [
+              {
+                "range": {
+                  "date": {
+                    "gte": "{{.Day}}||/d",
+                    "lt": "{{.Day}}||/d+1d"
+                  }
+                }
+              }
+            ],
+            "must": [
+              {
+                "match": {
+                  "content": "{{.Term}}"
+                }
+              }
+            ]
+          }
+        },
+        "script": {
+          "source": "double len = doc['content_length'].value; return Math.log(2 + len) * Math.sqrt(1 + len) / (1 + Math.pow(len, 0.25));"
+        }
+      }
+    }
+  }
+}

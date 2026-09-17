@@ -1,0 +1,21 @@
+{
+  "name": "wildcard",
+  "index": "cc-wet",
+  "description": "Leading-anchored wildcard (ab*yz). The automaton can seek in the term dictionary, unlike a leading wildcard.",
+  "bindings": {
+    "Wildcard": {
+      "source": "file",
+      "path": "./assets/query/terms/wildcard.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "wildcard": {
+        "content": {
+          "value": "{{.Wildcard}}"
+        }
+      }
+    }
+  }
+}

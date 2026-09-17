@@ -1,0 +1,23 @@
+{
+  "name": "range_keyword",
+  "index": "cc-wet",
+  "description": "Range over a keyword field. This is a term-dictionary range, not a point range: it enumerates the terms between the bounds.",
+  "bindings": {
+    "Range": {
+      "source": "file",
+      "path": "./assets/query/terms/keyword-ranges.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "range": {
+        "identified_content_language": {
+          "gte": "{{index .Range 0}}",
+          "lte": "{{index .Range 1}}"
+        }
+      }
+    }
+  }
+}

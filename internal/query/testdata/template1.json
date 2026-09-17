@@ -1,0 +1,28 @@
+{
+  "name": "template1",
+  "index": "none",
+  "description": "Simple template used to check bindings and resolver",
+  "bindings": {
+    "Greek": {
+      "source": "inline",
+      "terms": [
+        "alpha",
+        "beta",
+        "gamma",
+        "delta",
+        "epsilon",
+        "zeta"
+      ]
+    },
+    "Latin": {
+      "source": "file",
+      "path": "testdata/latin.txt"
+    }
+  },
+  "template": {
+    "letter": {
+      "greek": "{{.Greek}}",
+      "latin": "{{.Latin}}"
+    }
+  }
+}

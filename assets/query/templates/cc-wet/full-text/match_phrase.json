@@ -1,0 +1,21 @@
+{
+  "name": "match_phrase",
+  "index": "cc-wet",
+  "description": "Exact two-term phrase. Reads positions as well as postings, which is the main cost difference from match_and.",
+  "bindings": {
+    "Phrase": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-2.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "match_phrase": {
+        "content": {
+          "query": "{{.Phrase}}"
+        }
+      }
+    }
+  }
+}

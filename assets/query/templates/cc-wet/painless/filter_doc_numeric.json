@@ -1,0 +1,37 @@
+{
+  "name": "filter_doc_numeric",
+  "index": "cc-wet",
+  "description": "One numeric doc-values read per document. Compared against filter_baseline it prices doc-values access on a long field.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 0,
+    "track_total_hits": true,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          },
+          {
+            "script": {
+              "script": {
+                "source": "return doc['content_length'].value >= 0;"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

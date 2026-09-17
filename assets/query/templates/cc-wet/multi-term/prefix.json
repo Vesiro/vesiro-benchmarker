@@ -1,0 +1,21 @@
+{
+  "name": "prefix",
+  "index": "cc-wet",
+  "description": "Three-character prefix on the analysed text field. Enumerates every term in the dictionary sharing the prefix, so cost scales with expansion count.",
+  "bindings": {
+    "Prefix": {
+      "source": "file",
+      "path": "./assets/query/terms/prefix-3.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "prefix": {
+        "content": {
+          "value": "{{.Prefix}}"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "score_score_variable",
+  "index": "cc-wet",
+  "description": "Reads _score and rescales it. _score access forces the inner query's score to be computed and kept, which a constant-returning script can skip.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    },
+    "Term": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 10,
+    "query": {
+      "script_score": {
+        "query": {
+          "bool": {
+            "filter": [
+              {
+                "range": {
+                  "date": {
+                    "gte": "{{.Day}}||/d",
+                    "lt": "{{.Day}}||/d+1d"
+                  }
+                }
+              }
+            ],
+            "must": [
+              {
+                "match": {
+                  "content": "{{.Term}}"
+                }
+              }
+            ]
+          }
+        },
+        "script": {
+          "source": "return _score * 1.5 + 1.0;"
+        }
+      }
+    }
+  }
+}

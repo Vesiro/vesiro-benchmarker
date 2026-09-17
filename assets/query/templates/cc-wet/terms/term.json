@@ -1,0 +1,19 @@
+{
+  "name": "term",
+  "index": "cc-wet",
+  "description": "Single exact term lookup on a keyword field. One postings list, no analysis.",
+  "bindings": {
+    "Language": {
+      "source": "file",
+      "path": "./assets/query/terms/languages.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "term": {
+        "identified_content_language": "{{.Language}}"
+      }
+    }
+  }
+}

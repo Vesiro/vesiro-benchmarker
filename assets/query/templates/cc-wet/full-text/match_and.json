@@ -1,0 +1,22 @@
+{
+  "name": "match_and",
+  "index": "cc-wet",
+  "description": "The same two terms with operator AND, so both must match. Pairs with match_or to isolate the cost of the union from the cost of the intersection.",
+  "bindings": {
+    "Phrase": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-2.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "match": {
+        "content": {
+          "query": "{{.Phrase}}",
+          "operator": "and"
+        }
+      }
+    }
+  }
+}

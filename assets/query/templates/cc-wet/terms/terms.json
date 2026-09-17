@@ -1,0 +1,20 @@
+{
+  "name": "terms",
+  "index": "cc-wet",
+  "description": "Eight-value terms lookup on the analysed text field. Costs one postings list per value, unioned without scoring.",
+  "bindings": {
+    "Terms": {
+      "source": "file",
+      "path": "./assets/query/terms/terms-8.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "terms": {
+        "content": "___RAWJSON___{{toJson .Terms}}___RAWJSON___"
+      }
+    }
+  }
+}

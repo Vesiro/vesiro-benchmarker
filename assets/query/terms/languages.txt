@@ -1,0 +1,12 @@
+eng
+rus
+deu
+jpn
+zho
+spa
+fra
+ita
+por
+nld
+pol
+tur

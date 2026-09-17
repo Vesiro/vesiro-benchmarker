@@ -1,0 +1,36 @@
+{
+  "name": "field_script_doc",
+  "index": "cc-wet",
+  "description": "script_fields with doc-values access, over the top 100 hits only. Field scripts run per returned hit rather than per matching document, which is why this is orders of magnitude cheaper than the same script in filter context.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 100,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "script_fields": {
+      "len_kb": {
+        "script": {
+          "source": "doc['content_length'].value / 1024.0"
+        }
+      }
+    }
+  }
+}

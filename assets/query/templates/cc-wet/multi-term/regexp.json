@@ -1,0 +1,22 @@
+{
+  "name": "regexp",
+  "index": "cc-wet",
+  "description": "Anchored regexp with a bounded repetition. Compiles to a deterministic automaton that is intersected with the term dictionary.",
+  "bindings": {
+    "Regexp": {
+      "source": "file",
+      "path": "./assets/query/terms/regexp.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "regexp": {
+        "content": {
+          "value": "{{.Regexp}}",
+          "flags": "ALL"
+        }
+      }
+    }
+  }
+}

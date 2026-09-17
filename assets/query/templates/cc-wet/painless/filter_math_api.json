@@ -1,0 +1,37 @@
+{
+  "name": "filter_math_api",
+  "index": "cc-wet",
+  "description": "Math API calls on a doc value: log, sqrt and pow. The whitelisted Math methods are direct JVM calls, so this measures how much of the cost is the call boundary rather than the maths.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 0,
+    "track_total_hits": true,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          },
+          {
+            "script": {
+              "script": {
+                "source": "double d = Math.log(1 + doc['content_length'].value) * Math.sqrt(2.0) + Math.pow(1.5, 3); return d >= 0;"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

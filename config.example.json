@@ -1,0 +1,20 @@
+{
+  "node_url": "http://localhost:9200",
+  "index_name": "cc-wet",
+
+  "user": "",
+  "insecure_skip_tls_verify": false,
+
+  "num_clients": 16,
+  "requests_per_client": 100,
+  "repeat_each_request": 1,
+  "request_timeout": 30,
+  "qps": 0,
+  "uniform_requests": false,
+
+  "seed": 4232,
+  "extra_fields": "",
+
+  "progress": "bar",
+  "output": "text"
+}

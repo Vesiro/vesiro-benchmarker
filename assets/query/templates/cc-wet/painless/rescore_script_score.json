@@ -1,0 +1,46 @@
+{
+  "name": "rescore_script_score",
+  "index": "cc-wet",
+  "description": "script_score applied as a rescore over the top 100 documents per shard. The script runs on the rescore window only, so this is the cheapest way to use an expensive script and the contrast that makes the point.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 10,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "rescore": {
+      "window_size": 100,
+      "query": {
+        "rescore_query": {
+          "script_score": {
+            "query": {
+              "match_all": {}
+            },
+            "script": {
+              "source": "Math.log(2 + doc['content_length'].value)"
+            }
+          }
+        },
+        "query_weight": 1.0,
+        "rescore_query_weight": 1.0
+      }
+    }
+  }
+}

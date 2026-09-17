@@ -1,0 +1,36 @@
+{
+  "name": "function_score_script_score",
+  "index": "cc-wet",
+  "description": "A Painless script computes the score for every matching document. The script is compiled once and then run per hit, so this measures scripting throughput.",
+  "bindings": {
+    "Word": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "query": {
+      "function_score": {
+        "query": {
+          "match": {
+            "content": "{{.Word}}"
+          }
+        },
+        "functions": [
+          {
+            "script_score": {
+              "script": {
+                "source": "Math.log(2 + doc['content_length'].value) * params.factor",
+                "params": {
+                  "factor": 1.5
+                }
+              }
+            }
+          }
+        ],
+        "score_mode": "multiply",
+        "boost_mode": "multiply"
+      }
+    }
+  }
+}

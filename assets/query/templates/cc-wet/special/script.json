@@ -1,0 +1,41 @@
+{
+  "name": "script",
+  "index": "cc-wet",
+  "description": "A script used as a filter. It runs on every document the enclosing query reaches and cannot use the index, which makes it the worst-case scripting template in the suite.",
+  "bindings": {
+    "Word": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Length": {
+      "source": "file",
+      "path": "./assets/query/terms/content-length-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "content": "{{.Word}}"
+            }
+          }
+        ],
+        "filter": [
+          {
+            "script": {
+              "script": {
+                "source": "doc['content_length'].size() != 0 && doc['content_length'].value > params.min",
+                "params": {
+                  "min": "___RAWJSON___{{.Length}}___RAWJSON___"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

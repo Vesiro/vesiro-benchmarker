@@ -1,0 +1,45 @@
+{
+  "name": "exclusion",
+  "index": "cc-wet",
+  "description": "Two must clauses with a must_not exclusion. The must_not clause runs in filter context and only removes candidates, it never scores.",
+  "bindings": {
+    "Term1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Excluded": {
+      "source": "file",
+      "path": "./assets/query/terms/high_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "content": "{{.Term1}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term2}}"
+            }
+          }
+        ],
+        "must_not": [
+          {
+            "match": {
+              "content": "{{.Excluded}}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

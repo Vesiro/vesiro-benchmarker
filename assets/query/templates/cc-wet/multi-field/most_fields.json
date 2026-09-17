@@ -1,0 +1,25 @@
+{
+  "name": "most_fields",
+  "index": "cc-wet",
+  "description": "Runs the query per field and sums the scores, so every field's score is computed rather than just the winner's.",
+  "bindings": {
+    "Query": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-2.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "multi_match": {
+        "query": "{{.Query}}",
+        "type": "most_fields",
+        "fields": [
+          "content",
+          "target_uri",
+          "warc_info.filename"
+        ]
+      }
+    }
+  }
+}

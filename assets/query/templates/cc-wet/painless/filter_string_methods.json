@@ -1,0 +1,37 @@
+{
+  "name": "filter_string_methods",
+  "index": "cc-wet",
+  "description": "String methods on a keyword value: case conversion, substring and indexOf. Each one allocates, which is what makes string work in scripts expensive.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 0,
+    "track_total_hits": true,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          },
+          {
+            "script": {
+              "script": {
+                "source": "def v = doc['identified_content_language']; if (v.size() == 0) return true; String s = v.value.toUpperCase(); return s.substring(0, 1).indexOf('X') < 5;"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

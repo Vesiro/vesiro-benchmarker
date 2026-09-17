@@ -1,0 +1,22 @@
+{
+  "name": "rewrite_top_terms_blended_freqs_50",
+  "index": "cc-wet",
+  "description": "Prefix query pinned to the 'top_terms_blended_freqs_50' rewrite. Keeps the 50 top expansions and blends their document frequencies into one term statistic.",
+  "bindings": {
+    "Prefix": {
+      "source": "file",
+      "path": "./assets/query/terms/prefix-3.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "prefix": {
+        "content": {
+          "value": "{{.Prefix}}",
+          "rewrite": "top_terms_blended_freqs_50"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "span_term",
+  "index": "cc-wet",
+  "description": "A single span term. Same postings list as a term query, but carrying position information for span composition.",
+  "bindings": {
+    "Word1": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "span_term": {
+        "content": "{{.Word1}}"
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "ids",
+  "index": "cc-wet",
+  "description": "Eight-document _id lookup. Goes straight to the _id postings, bypassing scoring entirely. Replace the term file with real record ids to measure hits.",
+  "bindings": {
+    "Ids": {
+      "source": "file",
+      "path": "./assets/query/terms/record-ids-8.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "ids": {
+        "values": "___RAWJSON___{{toJson .Ids}}___RAWJSON___"
+      }
+    }
+  }
+}

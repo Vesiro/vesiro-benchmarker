@@ -1,0 +1,25 @@
+{
+  "name": "cross_fields",
+  "index": "cc-wet",
+  "description": "Treats the listed fields as one big field and blends their term statistics. The blending happens per term, so cost grows with terms x fields.",
+  "bindings": {
+    "Query": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-2.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "multi_match": {
+        "query": "{{.Query}}",
+        "type": "cross_fields",
+        "fields": [
+          "content",
+          "target_uri",
+          "warc_info.filename"
+        ]
+      }
+    }
+  }
+}

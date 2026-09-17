@@ -1,0 +1,38 @@
+{
+  "name": "agg_avg_script",
+  "index": "cc-wet",
+  "description": "An avg aggregation over a script instead of a field. The script runs once per document in the aggregation scope, so it prices scripted metrics against the same read done natively.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 0,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "aggs": {
+      "avg_len": {
+        "avg": {
+          "script": {
+            "source": "doc['content_length'].value * 1.0"
+          }
+        }
+      }
+    }
+  }
+}

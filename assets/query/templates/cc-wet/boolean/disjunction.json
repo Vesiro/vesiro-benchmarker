@@ -1,0 +1,43 @@
+{
+  "name": "disjunction",
+  "index": "cc-wet",
+  "description": "Three-clause bool.should. Every clause contributes candidates, so the union of three postings lists is scored.",
+  "bindings": {
+    "Term1": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term2": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    },
+    "Term3": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "bool": {
+        "should": [
+          {
+            "match": {
+              "content": "{{.Term1}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term2}}"
+            }
+          },
+          {
+            "match": {
+              "content": "{{.Term3}}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "range_date",
+  "index": "cc-wet",
+  "description": "Date range in ISO-8601. Dates are longs underneath, but the parsing and rounding happen per request on the coordinating node.",
+  "bindings": {
+    "Range": {
+      "source": "file",
+      "path": "./assets/query/terms/date-ranges-iso.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "range": {
+        "date": {
+          "gte": "{{index .Range 0}}",
+          "lt": "{{index .Range 1}}"
+        }
+      }
+    }
+  }
+}

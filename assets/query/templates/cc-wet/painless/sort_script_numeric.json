@@ -1,0 +1,40 @@
+{
+  "name": "sort_script_numeric",
+  "index": "cc-wet",
+  "description": "Sorts by a script-computed number. The script runs for every document that reaches the collector, not just the ones returned, so this is far more invocations than the size suggests.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 10,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "range": {
+              "date": {
+                "gte": "{{.Day}}||/d",
+                "lt": "{{.Day}}||/d+1d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "sort": [
+      {
+        "_script": {
+          "type": "number",
+          "order": "desc",
+          "script": {
+            "source": "doc['content_length'].value * 1.0"
+          }
+        }
+      }
+    ]
+  }
+}

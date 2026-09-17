@@ -1,0 +1,23 @@
+{
+  "name": "range_long",
+  "index": "cc-wet",
+  "description": "Range over the long content_length field of the base corpus. The widths in the term file span three orders of magnitude, so selectivity varies per request.",
+  "bindings": {
+    "Range": {
+      "source": "file",
+      "path": "./assets/query/terms/content-length-range.txt",
+      "split_on": ","
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "range": {
+        "content_length": {
+          "gte": "___RAWJSON___{{index .Range 0}}___RAWJSON___",
+          "lt": "___RAWJSON___{{index .Range 1}}___RAWJSON___"
+        }
+      }
+    }
+  }
+}

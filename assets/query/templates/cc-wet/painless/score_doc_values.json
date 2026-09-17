@@ -1,0 +1,47 @@
+{
+  "name": "score_doc_values",
+  "index": "cc-wet",
+  "description": "Scores from a numeric doc-values read. The usual shape of a real script_score, and the one to compare against function_score_field_value_factor in ../scoring/.",
+  "bindings": {
+    "Day": {
+      "source": "file",
+      "path": "./assets/query/terms/date-values.txt"
+    },
+    "Term": {
+      "source": "file",
+      "path": "./assets/query/terms/medium_terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "size": 10,
+    "query": {
+      "script_score": {
+        "query": {
+          "bool": {
+            "filter": [
+              {
+                "range": {
+                  "date": {
+                    "gte": "{{.Day}}||/d",
+                    "lt": "{{.Day}}||/d+1d"
+                  }
+                }
+              }
+            ],
+            "must": [
+              {
+                "match": {
+                  "content": "{{.Term}}"
+                }
+              }
+            ]
+          }
+        },
+        "script": {
+          "source": "return Math.log(2 + doc['content_length'].value);"
+        }
+      }
+    }
+  }
+}

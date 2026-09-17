@@ -1,0 +1,21 @@
+{
+  "name": "prefix_long",
+  "index": "cc-wet",
+  "description": "Five-character prefix. Same query shape as prefix, far fewer expansions - the pair isolates expansion count from query overhead.",
+  "bindings": {
+    "Prefix": {
+      "source": "file",
+      "path": "./assets/query/terms/prefix-5.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "prefix": {
+        "content": {
+          "value": "{{.Prefix}}"
+        }
+      }
+    }
+  }
+}

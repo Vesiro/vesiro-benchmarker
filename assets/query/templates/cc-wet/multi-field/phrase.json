@@ -1,0 +1,25 @@
+{
+  "name": "phrase",
+  "index": "cc-wet",
+  "description": "A match_phrase per field. Reads positions on all three fields.",
+  "bindings": {
+    "Query": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-2.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "multi_match": {
+        "query": "{{.Query}}",
+        "type": "phrase",
+        "fields": [
+          "content",
+          "target_uri",
+          "warc_info.filename"
+        ]
+      }
+    }
+  }
+}

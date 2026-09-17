@@ -1,0 +1,37 @@
+{
+  "name": "template2",
+  "index": "none",
+  "description": "Template used to test split on functionality",
+  "bindings": {
+    "Pairs": {
+      "source": "inline",
+      "split_on": ",",
+      "terms": [
+        "hans,greta",
+        "gin,tonic",
+        "day,night",
+        "hello,world",
+        "pulp,fiction"
+      ]
+    },
+    "Triplets": {
+      "source": "inline",
+      "split_on": "/",
+      "terms": [
+        "woman/no/cry",
+        "twist/and/shout",
+        "the/hateful/eight"
+      ]
+    }
+  },
+  "template": {
+    "phrase": [
+      "{{index .Pairs 0}}",
+      "{{index .Triplets 1}}",
+      "{{index .Pairs 1}}",
+      "{{index .Triplets 0}}",
+      "{{index .Triplets 2}}"
+    ]
+  }
+}
+

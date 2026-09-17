@@ -1,0 +1,21 @@
+{
+  "name": "match_or",
+  "index": "cc-wet",
+  "description": "Two-term match with the default OR operator: the union of both postings lists is scored.",
+  "bindings": {
+    "Phrase": {
+      "source": "file",
+      "path": "./assets/query/terms/phrase-2.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "match": {
+        "content": {
+          "query": "{{.Phrase}}"
+        }
+      }
+    }
+  }
+}

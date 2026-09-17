@@ -1,0 +1,43 @@
+{
+  "name": "span_or",
+  "index": "cc-wet",
+  "description": "Three span terms unioned. Every clause's positions are merged before any enclosing span operator sees them.",
+  "bindings": {
+    "Word1": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    },
+    "Word2": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    },
+    "Word3": {
+      "source": "file",
+      "path": "./assets/query/terms/lowercase-terms.txt"
+    }
+  },
+  "template": {
+    "_source": false,
+    "query": {
+      "span_or": {
+        "clauses": [
+          {
+            "span_term": {
+              "content": "{{.Word1}}"
+            }
+          },
+          {
+            "span_term": {
+              "content": "{{.Word2}}"
+            }
+          },
+          {
+            "span_term": {
+              "content": "{{.Word3}}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
