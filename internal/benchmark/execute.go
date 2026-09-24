@@ -12,10 +12,7 @@ type ExecutionConfig struct {
 	RunConfig  RunConfig
 	Publishers []publisher.Publisher
 
-	// Sequential runs the templates one at a time, in order, instead of picking
-	// one at random for each request. Each template is a phase of its own with
-	// the full request count or benchmark timeout, and publishers that
-	// implement publisher.PhaseObserver hear where each phase starts and ends.
+	// Runs the templates sequentially, one after another, instead of randomly.
 	Sequential bool
 }
 
