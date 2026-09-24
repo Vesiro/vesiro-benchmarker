@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/benchmark"
 	"github.com/Vesiro/vesiro-benchmarker/internal/publisher"
@@ -15,7 +14,7 @@ type FolderCmd struct {
 	benchmark.RequestOptions
 	targetFlags
 	queryFlags
-	QueryFolder string `required:"" name:"query-folder" help:"Folder containing raw JSON query files or template files."`
+	QueryFolder string `required:"" name:"query-folder" help:"Folder containing raw JSON query files or template files. Subfolders are included."`
 }
 
 func (c *FolderCmd) Run() error {
@@ -50,28 +49,21 @@ func (c *FolderCmd) Run() error {
 }
 
 func (c *FolderCmd) loadQueryFolder() ([]query.Template, error) {
-	entries, err := os.ReadDir(c.QueryFolder)
+	files, err := c.queryFiles(".")
 	if err != nil {
 		return nil, err
 	}
 
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Name() < entries[j].Name()
-	})
-
-	templates := make([]query.Template, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		filePath := filepath.Join(c.QueryFolder, entry.Name())
-		tmpl, err := benchmark.PrepareQuery(c.queryConfig(filePath))
+	templates := make([]query.Template, 0, len(files))
+	for _, rel := range files {
+		tmpl, err := benchmark.PrepareQuery(c.queryConfig(filepath.Join(c.QueryFolder, rel)))
 		if err != nil {
-			return nil, fmt.Errorf("prepare %s: %w", entry.Name(), err)
+			return nil, fmt.Errorf("prepare %s: %w", rel, err)
 		}
 
-		tmpl.Name = entry.Name()
+		// Name by path relative to the query folder, so same-named files in
+		// different subfolders stay separate in the per-query report.
+		tmpl.Name = filepath.ToSlash(rel)
 		templates = append(templates, tmpl)
 	}
 
@@ -80,4 +72,31 @@ func (c *FolderCmd) loadQueryFolder() ([]query.Template, error) {
 	}
 
 	return templates, nil
+}
+
+// queryFiles lists the files in dir and all its subfolders, relative to the
+// query folder. The order is fixed (by name, each subfolder in place), so a seed
+// replays the same run.
+func (c *FolderCmd) queryFiles(dir string) ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(c.QueryFolder, dir))
+	if err != nil {
+		return nil, err
+	}
+
+	var files []string
+	for _, entry := range entries {
+		rel := filepath.Join(dir, entry.Name())
+		if !entry.IsDir() {
+			files = append(files, rel)
+			continue
+		}
+
+		nested, err := c.queryFiles(rel)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, nested...)
+	}
+
+	return files, nil
 }

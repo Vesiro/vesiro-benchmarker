@@ -67,8 +67,9 @@ Execution Time:  1.6s
 Took Avg:        12.00ms
 Client Latency:  avg 15.00ms  p50 14.00ms  p95 24.00ms  p99 30.00ms
 HasHits:         400 (100.0%)
-Per Query:
-  match_all.json: 400 requests  avg 15.00ms  p50 14.00ms  p95 24.00ms  p99 30.00ms
+Per Query (client latency, ms):
+  Query           Requests    Avg    p50    p95    p99
+  match_all.json       400  15.00  14.00  24.00  30.00
 ```
 
 | Field | What it tells you |
@@ -81,7 +82,7 @@ Per Query:
 | `Took Avg` | Average search time reported by the node. |
 | `Client Latency` | Time measured by `bench`, from sending a request to reading its full response. |
 | `HasHits` | Successful searches where the node reported at least one matching document. |
-| `Per Query` | Request count and response times for each query. |
+| `Per Query` | Request count and client latency for each query, in milliseconds. |
 
 Client latency includes the network trip. The node's `took` covers its own work,
 so the two measure different things.
@@ -173,8 +174,9 @@ Run the bundled examples from the repository root so their term files can be fou
 
 ### Run a mix of queries
 
-`folder` randomly picks a query file for each new request. You can use your own
-folder or one of the included query folders.
+`folder` randomly picks a query file for each new request. It uses every file in
+the folder and in all of its subfolders. You can use your own folder or one of
+the included query folders.
 
 This example sends 1,600 requests in total, spread across the files in the
 folder:
@@ -191,8 +193,8 @@ folder:
 The request count applies to the whole run, not to each query file. The report
 shows how many times each query ran.
 
-The [templates folder](assets/query/templates/) also includes full-text, range,
-and other queries.
+To run a mix of all 80 Common Crawl templates, point `--query-folder` at the
+parent folder, `assets/query/templates/cc-wet`.
 
 ## Saved defaults
 

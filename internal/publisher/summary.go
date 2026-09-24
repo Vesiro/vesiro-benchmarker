@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/sample"
 )
@@ -287,11 +288,47 @@ func (p *Summary) Print() {
 	_, _ = fmt.Fprintf(w, "Client Latency:  %s\n", formatLatency(s.ClientLatencyMs))
 	_, _ = fmt.Fprintf(w, "HasHits:         %d (%.1f%%)\n", s.HasHits, s.HitsRatio*100)
 	if len(s.PerQuery) > 0 {
-		_, _ = fmt.Fprintln(w, "Per Query:")
-		for _, perQuery := range s.PerQuery {
-			_, _ = fmt.Fprintf(w, "  %s: %d requests  %s\n", perQuery.Name, perQuery.Requests, formatLatency(perQuery.ClientLatencyMs))
+		_, _ = fmt.Fprintln(w, "Per Query (client latency, ms):")
+		printPerQuery(w, s.PerQuery)
+	}
+}
+
+// printPerQuery renders one table row per query. Names are left-aligned and
+// numbers right-aligned, so the columns line up however long the names get.
+func printPerQuery(w io.Writer, results []PerQueryResult) {
+	rows := [][]string{{"Query", "Requests", "Avg", "p50", "p95", "p99"}}
+	for _, r := range results {
+		l := r.ClientLatencyMs
+		rows = append(rows, []string{
+			r.Name,
+			strconv.Itoa(r.Requests),
+			formatMs(l.Avg),
+			formatMs(l.P50),
+			formatMs(l.P95),
+			formatMs(l.P99),
+		})
+	}
+
+	// fmt pads by rune, so measure the same way.
+	widths := make([]int, len(rows[0]))
+	for _, row := range rows {
+		for i, cell := range row {
+			widths[i] = max(widths[i], utf8.RuneCountInString(cell))
 		}
 	}
+
+	for _, row := range rows {
+		var line strings.Builder
+		_, _ = fmt.Fprintf(&line, "  %-*s", widths[0], row[0])
+		for i := 1; i < len(row); i++ {
+			_, _ = fmt.Fprintf(&line, "  %*s", widths[i], row[i])
+		}
+		_, _ = fmt.Fprintln(w, line.String())
+	}
+}
+
+func formatMs(ms float64) string {
+	return strconv.FormatFloat(ms, 'f', 2, 64)
 }
 
 func formatLatency(l Latency) string {

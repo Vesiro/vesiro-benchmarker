@@ -222,11 +222,30 @@ func TestSummaryPrintReportsEveryHeadlineNumber(t *testing.T) {
 		"Took Avg:        4.00ms",
 		"Client Latency:  avg 30.00ms  p50 20.00ms  p95 40.00ms  p99 40.00ms",
 		"HasHits:         1 (50.0%)",
-		"Per Query:",
-		"a.json: 2 requests  avg 30.00ms",
+		"Per Query (client latency, ms):",
 	} {
 		require.Contains(t, printed, want)
 	}
+}
+
+func TestSummaryPrintAlignsThePerQueryTable(t *testing.T) {
+	t.Parallel()
+
+	var report bytes.Buffer
+	summary := summaryOver(t, 2*time.Second,
+		newSample("full-text/match_bool_prefix.json", 8, 6090710*time.Microsecond, 1),
+		newSample("terms/ids.json", 8, 64350*time.Microsecond, 1),
+		newSample("terms/ids.json", 8, 14770*time.Microsecond, 1),
+	)
+	summary.Out = &report
+
+	summary.Print()
+
+	require.Contains(t, report.String(), ""+
+		"Per Query (client latency, ms):\n"+
+		"  Query                             Requests      Avg      p50      p95      p99\n"+
+		"  full-text/match_bool_prefix.json         1  6090.71  6090.71  6090.71  6090.71\n"+
+		"  terms/ids.json                           2    39.56    14.77    64.35    64.35\n")
 }
 
 func TestSummaryFinishWritesJSONWhenAsked(t *testing.T) {
