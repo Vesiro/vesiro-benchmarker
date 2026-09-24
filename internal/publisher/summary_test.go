@@ -222,11 +222,30 @@ func TestSummaryPrintReportsEveryHeadlineNumber(t *testing.T) {
 		"Took Avg:        4.00ms",
 		"Client Latency:  avg 30.00ms  p50 20.00ms  p95 40.00ms  p99 40.00ms",
 		"HasHits:         1 (50.0%)",
-		"Per Query:",
-		"a.json: 2 requests  avg 30.00ms",
+		"Per Query (client latency, ms):",
 	} {
 		require.Contains(t, printed, want)
 	}
+}
+
+func TestSummaryPrintAlignsThePerQueryTable(t *testing.T) {
+	t.Parallel()
+
+	var report bytes.Buffer
+	summary := summaryOver(t, 2*time.Second,
+		newSample("full-text/match_bool_prefix.json", 8, 6090710*time.Microsecond, 1),
+		newSample("terms/ids.json", 8, 64350*time.Microsecond, 1),
+		newSample("terms/ids.json", 8, 14770*time.Microsecond, 1),
+	)
+	summary.Out = &report
+
+	summary.Print()
+
+	require.Contains(t, report.String(), ""+
+		"Per Query (client latency, ms):\n"+
+		"  Query                             Requests      Avg      p50      p95      p99\n"+
+		"  full-text/match_bool_prefix.json         1  6090.71  6090.71  6090.71  6090.71\n"+
+		"  terms/ids.json                           2    39.56    14.77    64.35    64.35\n")
 }
 
 func TestSummaryFinishWritesJSONWhenAsked(t *testing.T) {
@@ -275,4 +294,79 @@ func TestSummaryStartRejectsAnUnknownFormat(t *testing.T) {
 	require.NoError(t, (&Summary{Format: ""}).Start())
 	require.NoError(t, (&Summary{Format: OutputText}).Start())
 	require.NoError(t, (&Summary{Format: OutputJSON}).Start())
+}
+
+func TestSummaryCountsErrorsPerQuery(t *testing.T) {
+	t.Parallel()
+
+	summary := summaryOver(t, time.Second,
+		newSample("a.json", 8, 20*time.Millisecond, 1),
+		newErrorSample("a.json", http.StatusBadRequest, 40*time.Millisecond),
+		newSample("b.json", 8, 20*time.Millisecond, 1),
+	)
+
+	perQuery := summary.Calculate().PerQuery
+
+	require.Equal(t, "a.json", perQuery[0].Name)
+	require.Equal(t, 1, perQuery[0].Errors)
+	require.Zero(t, perQuery[1].Errors)
+}
+
+func TestSummaryGivesEachPhaseItsOwnRate(t *testing.T) {
+	t.Parallel()
+
+	summary := &Summary{Diagnostics: &bytes.Buffer{}}
+	require.NoError(t, summary.Start())
+	for _, name := range []string{"a.json", "b.json"} {
+		phase := Phase{Name: name}
+		require.NoError(t, summary.StartPhase(phase))
+		require.NoError(t, summary.Publish(newSample(name, 8, time.Millisecond, 1)))
+		require.NoError(t, summary.Publish(newSample(name, 8, time.Millisecond, 1)))
+		time.Sleep(20 * time.Millisecond)
+		require.NoError(t, summary.FinishPhase(phase))
+	}
+	summary.T1 = time.Now().UTC()
+
+	for _, perQuery := range summary.Calculate().PerQuery {
+		// Two requests in a little over 20ms is under 100 q/s. Measured
+		// against the whole run instead, it would be about half that.
+		require.Greater(t, perQuery.QPS, 50.0, perQuery.Name)
+		require.Less(t, perQuery.QPS, 100.0, perQuery.Name)
+	}
+}
+
+func TestSummaryRatesTheOnlyQueryOfARunByTheWholeRun(t *testing.T) {
+	t.Parallel()
+
+	summary := summaryOver(t, 2*time.Second,
+		newSample("a.json", 8, 20*time.Millisecond, 1),
+		newSample("a.json", 8, 20*time.Millisecond, 1),
+	)
+
+	require.InDelta(t, 1.0, summary.Calculate().PerQuery[0].QPS, 0.001)
+}
+
+func TestSummaryLeavesTheRateOutForAMixedRun(t *testing.T) {
+	t.Parallel()
+
+	summary := summaryOver(t, time.Second,
+		newSample("a.json", 8, 20*time.Millisecond, 1),
+		newSample("b.json", 8, 20*time.Millisecond, 1),
+	)
+
+	for _, perQuery := range summary.Calculate().PerQuery {
+		require.Zero(t, perQuery.QPS, "queries sharing a run have no rate of their own")
+	}
+}
+
+func TestSummaryReportCarriesCommandAndLabel(t *testing.T) {
+	t.Parallel()
+
+	summary := summaryOver(t, time.Second, newSample("a.json", 8, 20*time.Millisecond, 1))
+	summary.Meta = ReportMeta{Command: "folder", Label: "before-upgrade"}
+
+	report := summary.Report()
+
+	require.Equal(t, "folder", report.Command)
+	require.Equal(t, "before-upgrade", report.Label)
 }

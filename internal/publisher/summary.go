@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/sample"
 )
@@ -23,6 +24,9 @@ const (
 // ReportMeta is what a run knows about itself that the samples cannot say.
 type ReportMeta struct {
 	Version string
+	// Command is the bench command that made the run, such as "folder".
+	Command string
+	Label   string
 	Seed    int64
 	// Config is the effective configuration, marshalled as given. It must not
 	// carry credentials.
@@ -53,10 +57,17 @@ type Summary struct {
 	clientDurations []time.Duration
 	statusCounts    map[int]int
 	perQuery        map[string]*perQueryStats
+
+	// phaseDurations holds how long each finished phase of a sequential run
+	// took, by query name, which gives each query a rate of its own.
+	phaseDurations map[string]time.Duration
+	phaseName      string
+	phaseStart     time.Time
 }
 
 type perQueryStats struct {
 	clientDurations []time.Duration
+	errors          int
 }
 
 func (p *Summary) out() io.Writer {
@@ -83,6 +94,10 @@ func (p *Summary) Start() error {
 
 func (p *Summary) Finish() error {
 	p.T1 = time.Now().UTC()
+	// A phase still open was cut short, but its rate is still worth having.
+	if p.phaseName != "" {
+		p.closePhase()
+	}
 	if p.Format == OutputJSON {
 		return p.WriteJSON()
 	}
@@ -137,6 +152,8 @@ func (p *Summary) Publish(s sample.Sample) error {
 		return nil
 	}
 
+	stats.errors++
+
 	// Echo the failing response so the operator can see why it failed, but
 	// never fail the run over a formatting problem.
 	var pretty bytes.Buffer
@@ -149,6 +166,25 @@ func (p *Summary) Publish(s sample.Sample) error {
 	return nil
 }
 
+func (p *Summary) StartPhase(phase Phase) error {
+	p.phaseName = phase.Name
+	p.phaseStart = time.Now()
+	return nil
+}
+
+func (p *Summary) FinishPhase(Phase) error {
+	p.closePhase()
+	return nil
+}
+
+func (p *Summary) closePhase() {
+	if p.phaseDurations == nil {
+		p.phaseDurations = make(map[string]time.Duration)
+	}
+	p.phaseDurations[p.phaseName] = time.Since(p.phaseStart)
+	p.phaseName = ""
+}
+
 // Latency is a distribution of client latencies in milliseconds.
 type Latency struct {
 	Avg float64 `json:"avg"`
@@ -158,8 +194,12 @@ type Latency struct {
 }
 
 type PerQueryResult struct {
-	Name            string  `json:"name"`
-	Requests        int     `json:"requests"`
+	Name     string `json:"name"`
+	Requests int    `json:"requests"`
+	Errors   int    `json:"errors"`
+	// QPS is only known when the query ran on its own: in its own phase of a
+	// sequential run, or as the only query of a run.
+	QPS             float64 `json:"qps,omitempty"`
 	ClientLatencyMs Latency `json:"clientLatencyMs"`
 }
 
@@ -180,12 +220,18 @@ type Results struct {
 
 type Report struct {
 	Version    string    `json:"version"`
+	Command    string    `json:"command,omitempty"`
+	Label      string    `json:"label,omitempty"`
 	Seed       int64     `json:"seed"`
 	StartedAt  time.Time `json:"startedAt"`
 	FinishedAt time.Time `json:"finishedAt"`
-	Config     any       `json:"config,omitempty"`
-	Queries    []string  `json:"queries,omitempty"`
-	Results    Results   `json:"results"`
+	// Interrupted and Error mark a run that stopped before its end, so its
+	// results cover only part of what it set out to measure.
+	Interrupted bool     `json:"interrupted,omitempty"`
+	Error       string   `json:"error,omitempty"`
+	Config      any      `json:"config,omitempty"`
+	Queries     []string `json:"queries,omitempty"`
+	Results     Results  `json:"results"`
 }
 
 // latency sorts durations in place and reduces them to a distribution.
@@ -214,11 +260,21 @@ func (p *Summary) Calculate() Results {
 
 	perQuery := make([]PerQueryResult, 0, len(p.perQuery))
 	for name, stats := range p.perQuery {
-		perQuery = append(perQuery, PerQueryResult{
+		duration, ok := p.phaseDurations[name]
+		if !ok && len(p.perQuery) == 1 {
+			duration = executionTime
+		}
+
+		result := PerQueryResult{
 			Name:            name,
 			Requests:        len(stats.clientDurations),
+			Errors:          stats.errors,
 			ClientLatencyMs: latency(stats.clientDurations),
-		})
+		}
+		if duration > 0 {
+			result.QPS = float64(result.Requests) / duration.Seconds()
+		}
+		perQuery = append(perQuery, result)
 	}
 	sort.Slice(perQuery, func(i, j int) bool { return perQuery[i].Name < perQuery[j].Name })
 
@@ -255,6 +311,8 @@ func (p *Summary) Calculate() Results {
 func (p *Summary) Report() Report {
 	return Report{
 		Version:    p.Meta.Version,
+		Command:    p.Meta.Command,
+		Label:      p.Meta.Label,
 		Seed:       p.Meta.Seed,
 		StartedAt:  p.T0,
 		FinishedAt: p.T1,
@@ -287,11 +345,47 @@ func (p *Summary) Print() {
 	_, _ = fmt.Fprintf(w, "Client Latency:  %s\n", formatLatency(s.ClientLatencyMs))
 	_, _ = fmt.Fprintf(w, "HasHits:         %d (%.1f%%)\n", s.HasHits, s.HitsRatio*100)
 	if len(s.PerQuery) > 0 {
-		_, _ = fmt.Fprintln(w, "Per Query:")
-		for _, perQuery := range s.PerQuery {
-			_, _ = fmt.Fprintf(w, "  %s: %d requests  %s\n", perQuery.Name, perQuery.Requests, formatLatency(perQuery.ClientLatencyMs))
+		_, _ = fmt.Fprintln(w, "Per Query (client latency, ms):")
+		printPerQuery(w, s.PerQuery)
+	}
+}
+
+// printPerQuery renders one table row per query. Names are left-aligned and
+// numbers right-aligned, so the columns line up however long the names get.
+func printPerQuery(w io.Writer, results []PerQueryResult) {
+	rows := [][]string{{"Query", "Requests", "Avg", "p50", "p95", "p99"}}
+	for _, r := range results {
+		l := r.ClientLatencyMs
+		rows = append(rows, []string{
+			r.Name,
+			strconv.Itoa(r.Requests),
+			formatMs(l.Avg),
+			formatMs(l.P50),
+			formatMs(l.P95),
+			formatMs(l.P99),
+		})
+	}
+
+	// fmt pads by rune, so measure the same way.
+	widths := make([]int, len(rows[0]))
+	for _, row := range rows {
+		for i, cell := range row {
+			widths[i] = max(widths[i], utf8.RuneCountInString(cell))
 		}
 	}
+
+	for _, row := range rows {
+		var line strings.Builder
+		_, _ = fmt.Fprintf(&line, "  %-*s", widths[0], row[0])
+		for i := 1; i < len(row); i++ {
+			_, _ = fmt.Fprintf(&line, "  %*s", widths[i], row[i])
+		}
+		_, _ = fmt.Fprintln(w, line.String())
+	}
+}
+
+func formatMs(ms float64) string {
+	return strconv.FormatFloat(ms, 'f', 2, 64)
 }
 
 func formatLatency(l Latency) string {

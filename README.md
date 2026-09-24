@@ -67,8 +67,9 @@ Execution Time:  1.6s
 Took Avg:        12.00ms
 Client Latency:  avg 15.00ms  p50 14.00ms  p95 24.00ms  p99 30.00ms
 HasHits:         400 (100.0%)
-Per Query:
-  match_all.json: 400 requests  avg 15.00ms  p50 14.00ms  p95 24.00ms  p99 30.00ms
+Per Query (client latency, ms):
+  Query           Requests    Avg    p50    p95    p99
+  match_all.json       400  15.00  14.00  24.00  30.00
 ```
 
 | Field | What it tells you |
@@ -81,7 +82,7 @@ Per Query:
 | `Took Avg` | Average search time reported by the node. |
 | `Client Latency` | Time measured by `bench`, from sending a request to reading its full response. |
 | `HasHits` | Successful searches where the node reported at least one matching document. |
-| `Per Query` | Request count and response times for each query. |
+| `Per Query` | Request count and client latency for each query, in milliseconds. |
 
 Client latency includes the network trip. The node's `took` covers its own work,
 so the two measure different things.
@@ -90,8 +91,8 @@ Check errors before comparing timings. Failed search responses are included in
 the timings. Connection failures, request timeouts, or invalid response JSON
 stop the run; those requests aren't counted in the report.
 
-To save the report as JSON, add `--output=json > report.json` to your benchmark
-command.
+Every run also saves its report as JSON, so you can compare it with other runs
+later. See [Save and compare runs](#save-and-compare-runs).
 
 ## Common Crawl queries
 
@@ -138,7 +139,7 @@ The four commands use the same query template files:
 | --- | --- |
 | `single` | Send one request using a query template file and read the response. |
 | `run` | Benchmark one query template file. |
-| `folder` | Benchmark a mix of query template files. |
+| `folder` | Benchmark each query template file in a folder in turn, or a random mix of them. |
 | `render` | Preview the JSON from a query template file without sending a request. |
 
 ### Define a query template
@@ -171,12 +172,16 @@ searches the `content` field with phrases from a text file. Its main fields are:
 File paths inside templates are relative to the directory where you run `bench`.
 Run the bundled examples from the repository root so their term files can be found.
 
-### Run a mix of queries
+### Run a folder of queries
 
-`folder` randomly picks a query file for each new request. You can use your own
-folder or one of the included query folders.
+`folder` benchmarks every query file in a folder and in all of its subfolders.
+It runs the files one after another: all clients send the first query file
+until it reaches its limit, then move on to the next one. That way each query's
+results aren't affected by the others. You can use your own folder or one of the
+included query folders.
 
-This example sends 1,600 requests in total, spread across the files in the
+The request count or `--benchmark-timeout` applies to each query file, not to
+the whole run. This example sends 1,600 requests for each of the files in the
 folder:
 
 ```sh
@@ -188,11 +193,58 @@ folder:
   --requests-per-client=100
 ```
 
-The request count applies to the whole run, not to each query file. The report
-shows how many times each query ran.
+To run all 80 Common Crawl templates, point `--query-folder` at the parent
+folder, `assets/query/templates/cc-wet`. With `--benchmark-timeout=30` instead of
+a request count, each template runs for 30 seconds, so the whole run takes about
+40 minutes.
 
-The [templates folder](assets/query/templates/) also includes full-text, range,
-and other queries.
+### Run a mix of queries
+
+Add `--random` to mix the query files instead. Each request then picks a query
+file at random, and the request count or `--benchmark-timeout` applies to the
+whole run. This example sends 1,600 requests in total, spread across the files
+in the folder:
+
+```sh
+./bin/bench folder \
+  --node-url=http://localhost:9200 \
+  --index-name=my-index \
+  --query-folder=assets/query/templates/cc-wet/boolean \
+  --num-clients=16 \
+  --requests-per-client=100 \
+  --random
+```
+
+The report shows how many times each query ran.
+
+## Save and compare runs
+
+Every `run` and `folder` benchmark saves its report as a JSON file in the
+`results` folder. The file is named by when the run started, the command, and
+the index:
+
+```text
+results/2026-09-24T14-15-02_folder_cc-wet_after-upgrade.json
+```
+
+| Option | What it does |
+| --- | --- |
+| `--label=after-upgrade` | Name the run. The label goes at the end of the file name and into the report. |
+| `--results-dir=path` | Save reports to a different folder. |
+| `--no-save` | Don't save this run. |
+
+A run stopped with Ctrl-C, or one that fails partway through, is still saved and
+marked as incomplete. To stop saving by default, set `"save": false` in
+`config.json`. You can then add `--save` to save a single run.
+
+To compare two runs, pass the run to compare against as `--baseline` and the
+run to check as `--contender`:
+
+```sh
+./bin/bench compare \
+  --baseline=results/2026-09-24T11-30-12_folder_cc-wet_before-upgrade.json \
+  --contender=results/2026-09-24T14-15-02_folder_cc-wet_after-upgrade.json
+```
 
 ## Saved defaults
 

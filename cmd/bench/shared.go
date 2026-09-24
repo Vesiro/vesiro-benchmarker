@@ -67,7 +67,7 @@ func newRunConfig(
 }
 
 // newSummary builds the end-of-run report publisher.
-func newSummary(config any, opts benchmark.RequestOptions, templates []query.Template, seed int64) *publisher.Summary {
+func newSummary(command string, config any, opts benchmark.RequestOptions, save saveFlags, templates []query.Template, seed int64) *publisher.Summary {
 	names := make([]string, 0, len(templates))
 	for _, tmpl := range templates {
 		names = append(names, tmpl.Name)
@@ -77,6 +77,8 @@ func newSummary(config any, opts benchmark.RequestOptions, templates []query.Tem
 		Format: opts.Output,
 		Meta: publisher.ReportMeta{
 			Version: version.Version,
+			Command: command,
+			Label:   save.Label,
 			Seed:    seed,
 			Config:  config,
 			Queries: names,
@@ -84,19 +86,24 @@ func newSummary(config any, opts benchmark.RequestOptions, templates []query.Tem
 	}
 }
 
-// newProgressPublisher returns the configured progress publisher, or nil when
-// progress display is turned off.
-func newProgressPublisher(opts benchmark.RequestOptions) (publisher.Publisher, error) {
+// progressConfig describes the progress display the options ask for.
+func progressConfig(opts benchmark.RequestOptions) publisher.ProgressConfig {
 	mode := opts.Progress
 	if opts.Output == publisher.OutputJSON {
 		mode = "none"
 	}
 
-	return publisher.NewProgress(publisher.ProgressConfig{
+	return publisher.ProgressConfig{
 		Mode:          mode,
 		TotalRequests: opts.TotalRequests(),
 		BenchmarkTime: opts.BenchmarkTimeoutDuration(),
-	})
+	}
+}
+
+// newProgressPublisher returns the configured progress publisher, or nil when
+// progress display is turned off.
+func newProgressPublisher(opts benchmark.RequestOptions) (publisher.Publisher, error) {
+	return publisher.NewProgress(progressConfig(opts))
 }
 
 // appendProgress adds the progress publisher when one is configured.

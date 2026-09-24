@@ -11,3 +11,6 @@
 
 # Release archives
 /dist/
+
+# Saved benchmark reports
+/results/

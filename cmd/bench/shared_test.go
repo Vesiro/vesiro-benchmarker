@@ -172,12 +172,14 @@ func TestNewSummaryCarriesTheReportMetadata(t *testing.T) {
 	}
 	opts := benchmark.RequestOptions{NumClients: 8, Output: "json"}
 
-	summary := newSummary(cmd, opts, []query.Template{{Name: "a.json"}, {Name: "b.json"}}, 4232)
+	summary := newSummary("run", cmd, opts, saveFlags{Label: "baseline"}, []query.Template{{Name: "a.json"}, {Name: "b.json"}}, 4232)
 
 	require.Equal(t, "json", summary.Format)
 	require.Equal(t, version.Version, summary.Meta.Version)
 	require.EqualValues(t, 4232, summary.Meta.Seed)
 	require.Equal(t, []string{"a.json", "b.json"}, summary.Meta.Queries)
+	require.Equal(t, "run", summary.Meta.Command)
+	require.Equal(t, "baseline", summary.Meta.Label)
 
 	raw, err := json.Marshal(summary.Meta.Config)
 	require.NoError(t, err)

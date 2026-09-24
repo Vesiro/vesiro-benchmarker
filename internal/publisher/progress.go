@@ -12,6 +12,14 @@ type ProgressConfig struct {
 	Mode          string
 	TotalRequests *int
 	BenchmarkTime *time.Duration
+
+	// Prefix is shown at the start of a bar, such as the name of what it
+	// tracks.
+	Prefix string
+
+	// CleanOnFinish wipes a bar off the terminal when it finishes, for runs
+	// that print their own line in its place.
+	CleanOnFinish bool
 }
 
 // NewProgress builds the progress publisher for the configured mode. It returns
@@ -20,10 +28,18 @@ func NewProgress(config ProgressConfig) (Publisher, error) {
 	switch config.Mode {
 	case "bar":
 		if config.TotalRequests != nil {
-			return &SampleProgressBar{SampleSize: *config.TotalRequests}, nil
+			return &SampleProgressBar{
+				SampleSize:    *config.TotalRequests,
+				Prefix:        config.Prefix,
+				CleanOnFinish: config.CleanOnFinish,
+			}, nil
 		}
 		if config.BenchmarkTime != nil {
-			return &TimedProgressBar{Duration: *config.BenchmarkTime}, nil
+			return &TimedProgressBar{
+				Duration:      *config.BenchmarkTime,
+				Prefix:        config.Prefix,
+				CleanOnFinish: config.CleanOnFinish,
+			}, nil
 		}
 		return nil, fmt.Errorf("progress mode 'bar' requires either a request total or a benchmark timeout")
 	case "log":
