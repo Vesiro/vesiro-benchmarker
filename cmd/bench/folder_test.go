@@ -89,3 +89,12 @@ func TestLoadQueryFolderWithNoFilesAnywhereFails(t *testing.T) {
 
 	require.ErrorContains(t, err, "no query files found")
 }
+
+func TestLongestNameMeasuresTheWidestTemplateName(t *testing.T) {
+	t.Parallel()
+
+	templates := []query.Template{{Name: "a.json"}, {Name: "multi-term/fuzzy.json"}, {Name: "b.json"}}
+
+	require.Equal(t, len("multi-term/fuzzy.json"), longestName(templates))
+	require.Zero(t, longestName(nil))
+}

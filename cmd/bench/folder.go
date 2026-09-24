@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"unicode/utf8"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/benchmark"
 	"github.com/Vesiro/vesiro-benchmarker/internal/publisher"
@@ -15,6 +16,7 @@ type FolderCmd struct {
 	targetFlags
 	queryFlags
 	QueryFolder string `required:"" name:"query-folder" help:"Folder containing raw JSON query files or template files. Subfolders are included."`
+	Random      bool   `default:"false" help:"Pick a query file at random for each request instead of running them one at a time. The request count or benchmark timeout then applies to the whole run, not to each file."`
 }
 
 func (c *FolderCmd) Run() error {
@@ -32,12 +34,26 @@ func (c *FolderCmd) Run() error {
 		return err
 	}
 
+	summary := newSummary(c, c.RequestOptions, templates, seed)
+
 	var publishers []publisher.Publisher
-	publishers, err = appendProgress(publishers, c.RequestOptions)
-	if err != nil {
-		return err
+	if c.Random {
+		publishers, err = appendProgress(publishers, c.RequestOptions)
+		if err != nil {
+			return err
+		}
+		publishers = append(publishers, summary)
+	} else {
+		// Each template gets its own progress bar, wiped once its result line
+		// is printed. The phase report goes last so it finishes first, which
+		// puts the line for a template cut short above the final report.
+		progress := progressConfig(c.RequestOptions)
+		progress.CleanOnFinish = true
+		publishers = append(publishers, summary, &publisher.PhaseReport{
+			Progress:  progress,
+			NameWidth: longestName(templates),
+		})
 	}
-	publishers = append(publishers, newSummary(c, c.RequestOptions, templates, seed))
 
 	ctx, cancel := newSignalContext()
 	defer cancel()
@@ -45,6 +61,7 @@ func (c *FolderCmd) Run() error {
 	return execute(ctx, benchmark.ExecutionConfig{
 		RunConfig:  newRunConfig(c.targetFlags, c.RequestOptions, templates, seed),
 		Publishers: publishers,
+		Sequential: !c.Random,
 	})
 }
 
@@ -99,4 +116,12 @@ func (c *FolderCmd) queryFiles(dir string) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func longestName(templates []query.Template) int {
+	width := 0
+	for _, tmpl := range templates {
+		width = max(width, utf8.RuneCountInString(tmpl.Name))
+	}
+	return width
 }

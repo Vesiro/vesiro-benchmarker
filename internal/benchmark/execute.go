@@ -4,12 +4,19 @@ import (
 	"context"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/publisher"
+	"github.com/Vesiro/vesiro-benchmarker/internal/query"
 	"github.com/Vesiro/vesiro-benchmarker/internal/sample"
 )
 
 type ExecutionConfig struct {
 	RunConfig  RunConfig
 	Publishers []publisher.Publisher
+
+	// Sequential runs the templates one at a time, in order, instead of picking
+	// one at random for each request. Each template is a phase of its own with
+	// the full request count or benchmark timeout, and publishers that
+	// implement publisher.PhaseObserver hear where each phase starts and ends.
+	Sequential bool
 }
 
 func Execute(ctx context.Context, config ExecutionConfig) (err error) {
@@ -31,14 +38,51 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 		startedPublishers = append(startedPublishers, p)
 	}
 
-	samples := make(chan sample.Sample, config.RunConfig.NumClients)
-	done, err := Run(runCtx, config.RunConfig, samples)
+	if !config.Sequential {
+		return publishRun(runCtx, config.RunConfig, startedPublishers)
+	}
+
+	// The loop below would quietly do nothing without templates.
+	if err := config.RunConfig.Validate(); err != nil {
+		return err
+	}
+
+	templates := config.RunConfig.Templates
+	for i, tmpl := range templates {
+		phase := publisher.Phase{Number: i + 1, Count: len(templates), Name: tmpl.Name}
+		phaseConfig := config.RunConfig
+		phaseConfig.Templates = []query.Template{tmpl}
+
+		if err := forEachPhaseObserver(startedPublishers, func(o publisher.PhaseObserver) error {
+			return o.StartPhase(phase)
+		}); err != nil {
+			return err
+		}
+		if err := publishRun(runCtx, phaseConfig, startedPublishers); err != nil {
+			return err
+		}
+		if err := forEachPhaseObserver(startedPublishers, func(o publisher.PhaseObserver) error {
+			return o.FinishPhase(phase)
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// publishRun makes one run and hands each of its samples to the publishers.
+// It returns once every sample is published, so nothing from this run can
+// arrive after it.
+func publishRun(ctx context.Context, config RunConfig, publishers []publisher.Publisher) error {
+	samples := make(chan sample.Sample, config.NumClients)
+	done, err := Run(ctx, config, samples)
 	if err != nil {
 		return err
 	}
 
 	for s := range samples {
-		if err := distributeSample(s, startedPublishers); err != nil {
+		if err := distributeSample(s, publishers); err != nil {
 			return err
 		}
 	}
@@ -50,6 +94,17 @@ func distributeSample(s sample.Sample, publishers []publisher.Publisher) error {
 	for _, p := range publishers {
 		if err := p.Publish(s); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func forEachPhaseObserver(publishers []publisher.Publisher, fn func(publisher.PhaseObserver) error) error {
+	for _, p := range publishers {
+		if o, ok := p.(publisher.PhaseObserver); ok {
+			if err := fn(o); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

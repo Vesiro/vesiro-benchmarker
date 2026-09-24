@@ -139,7 +139,7 @@ The four commands use the same query template files:
 | --- | --- |
 | `single` | Send one request using a query template file and read the response. |
 | `run` | Benchmark one query template file. |
-| `folder` | Benchmark a mix of query template files. |
+| `folder` | Benchmark each query template file in a folder in turn, or a random mix of them. |
 | `render` | Preview the JSON from a query template file without sending a request. |
 
 ### Define a query template
@@ -172,13 +172,16 @@ searches the `content` field with phrases from a text file. Its main fields are:
 File paths inside templates are relative to the directory where you run `bench`.
 Run the bundled examples from the repository root so their term files can be found.
 
-### Run a mix of queries
+### Run a folder of queries
 
-`folder` randomly picks a query file for each new request. It uses every file in
-the folder and in all of its subfolders. You can use your own folder or one of
-the included query folders.
+`folder` benchmarks every query file in a folder and in all of its subfolders.
+It runs the files one after another: all clients send the first query file
+until it reaches its limit, then move on to the next one. That way each query's
+results aren't affected by the others. You can use your own folder or one of the
+included query folders.
 
-This example sends 1,600 requests in total, spread across the files in the
+The request count or `--benchmark-timeout` applies to each query file, not to
+the whole run. This example sends 1,600 requests for each of the files in the
 folder:
 
 ```sh
@@ -190,11 +193,29 @@ folder:
   --requests-per-client=100
 ```
 
-The request count applies to the whole run, not to each query file. The report
-shows how many times each query ran.
+To run all 80 Common Crawl templates, point `--query-folder` at the parent
+folder, `assets/query/templates/cc-wet`. With `--benchmark-timeout=30` instead of
+a request count, each template runs for 30 seconds, so the whole run takes about
+40 minutes.
 
-To run a mix of all 80 Common Crawl templates, point `--query-folder` at the
-parent folder, `assets/query/templates/cc-wet`.
+### Run a mix of queries
+
+Add `--random` to mix the query files instead. Each request then picks a query
+file at random, and the request count or `--benchmark-timeout` applies to the
+whole run. This example sends 1,600 requests in total, spread across the files
+in the folder:
+
+```sh
+./bin/bench folder \
+  --node-url=http://localhost:9200 \
+  --index-name=my-index \
+  --query-folder=assets/query/templates/cc-wet/boolean \
+  --num-clients=16 \
+  --requests-per-client=100 \
+  --random
+```
+
+The report shows how many times each query ran.
 
 ## Saved defaults
 
