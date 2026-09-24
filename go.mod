@@ -7,6 +7,7 @@ toolchain go1.24.4
 require (
 	github.com/alecthomas/kong v1.12.0
 	github.com/cheggaaa/pb/v3 v3.1.7
+	github.com/mattn/go-isatty v0.0.20
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -16,7 +17,6 @@ require (
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

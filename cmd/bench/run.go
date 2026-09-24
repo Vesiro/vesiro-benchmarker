@@ -10,6 +10,7 @@ type RunCmd struct {
 	benchmark.RequestOptions
 	targetFlags
 	queryFlags
+	saveFlags
 	QueryTemplate string `required:"" help:"Template string used to generate query bodies."`
 }
 
@@ -31,13 +32,14 @@ func (c *RunCmd) Run() error {
 	if err != nil {
 		return err
 	}
-	publishers = append(publishers, newSummary(c, c.RequestOptions, []query.Template{template}, seed))
+	summary := newSummary("run", c, c.RequestOptions, c.saveFlags, []query.Template{template}, seed)
+	publishers = append(publishers, summary)
 
 	ctx, cancel := newSignalContext()
 	defer cancel()
 
-	return execute(ctx, benchmark.ExecutionConfig{
+	return executeAndSave(ctx, benchmark.ExecutionConfig{
 		RunConfig:  newRunConfig(c.targetFlags, c.RequestOptions, []query.Template{template}, seed),
 		Publishers: publishers,
-	})
+	}, summary, c.saveFlags)
 }

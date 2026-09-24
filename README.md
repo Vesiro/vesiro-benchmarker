@@ -91,8 +91,8 @@ Check errors before comparing timings. Failed search responses are included in
 the timings. Connection failures, request timeouts, or invalid response JSON
 stop the run; those requests aren't counted in the report.
 
-To save the report as JSON, add `--output=json > report.json` to your benchmark
-command.
+Every run also saves its report as JSON, so you can compare it with other runs
+later. See [Save and compare runs](#save-and-compare-runs).
 
 ## Common Crawl queries
 
@@ -216,6 +216,35 @@ in the folder:
 ```
 
 The report shows how many times each query ran.
+
+## Save and compare runs
+
+Every `run` and `folder` benchmark saves its report as a JSON file in the
+`results` folder. The file is named by when the run started, the command, and
+the index:
+
+```text
+results/2026-09-24T14-15-02_folder_cc-wet_after-upgrade.json
+```
+
+| Option | What it does |
+| --- | --- |
+| `--label=after-upgrade` | Name the run. The label goes at the end of the file name and into the report. |
+| `--results-dir=path` | Save reports to a different folder. |
+| `--no-save` | Don't save this run. |
+
+A run stopped with Ctrl-C, or one that fails partway through, is still saved and
+marked as incomplete. To stop saving by default, set `"save": false` in
+`config.json`. You can then add `--save` to save a single run.
+
+To compare two runs, pass the run to compare against as `--baseline` and the
+run to check as `--contender`:
+
+```sh
+./bin/bench compare \
+  --baseline=results/2026-09-24T11-30-12_folder_cc-wet_before-upgrade.json \
+  --contender=results/2026-09-24T14-15-02_folder_cc-wet_after-upgrade.json
+```
 
 ## Saved defaults
 

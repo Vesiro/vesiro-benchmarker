@@ -15,6 +15,7 @@ type FolderCmd struct {
 	benchmark.RequestOptions
 	targetFlags
 	queryFlags
+	saveFlags
 	QueryFolder string `required:"" name:"query-folder" help:"Folder containing raw JSON query files or template files. Subfolders are included."`
 	Random      bool   `default:"false" help:"Pick a query file at random for each request instead of running them one at a time. The request count or benchmark timeout then applies to the whole run, not to each file."`
 }
@@ -34,7 +35,7 @@ func (c *FolderCmd) Run() error {
 		return err
 	}
 
-	summary := newSummary(c, c.RequestOptions, templates, seed)
+	summary := newSummary("folder", c, c.RequestOptions, c.saveFlags, templates, seed)
 
 	var publishers []publisher.Publisher
 	if c.Random {
@@ -58,11 +59,11 @@ func (c *FolderCmd) Run() error {
 	ctx, cancel := newSignalContext()
 	defer cancel()
 
-	return execute(ctx, benchmark.ExecutionConfig{
+	return executeAndSave(ctx, benchmark.ExecutionConfig{
 		RunConfig:  newRunConfig(c.targetFlags, c.RequestOptions, templates, seed),
 		Publishers: publishers,
 		Sequential: !c.Random,
-	})
+	}, summary, c.saveFlags)
 }
 
 func (c *FolderCmd) loadQueryFolder() ([]query.Template, error) {

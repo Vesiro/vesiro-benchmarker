@@ -67,7 +67,7 @@ func newRunConfig(
 }
 
 // newSummary builds the end-of-run report publisher.
-func newSummary(config any, opts benchmark.RequestOptions, templates []query.Template, seed int64) *publisher.Summary {
+func newSummary(command string, config any, opts benchmark.RequestOptions, save saveFlags, templates []query.Template, seed int64) *publisher.Summary {
 	names := make([]string, 0, len(templates))
 	for _, tmpl := range templates {
 		names = append(names, tmpl.Name)
@@ -77,6 +77,8 @@ func newSummary(config any, opts benchmark.RequestOptions, templates []query.Tem
 		Format: opts.Output,
 		Meta: publisher.ReportMeta{
 			Version: version.Version,
+			Command: command,
+			Label:   save.Label,
 			Seed:    seed,
 			Config:  config,
 			Queries: names,

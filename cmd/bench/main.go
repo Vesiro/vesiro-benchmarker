@@ -8,10 +8,11 @@ import (
 )
 
 type CLI struct {
-	Run    RunCmd    `cmd:"" help:"Benchmark a single query template with many concurrent clients."`
-	Folder FolderCmd `cmd:"" help:"Benchmark every query file in a folder and its subfolders."`
-	Single SingleCmd `cmd:"" help:"Perform a single search and print the response."`
-	Render RenderCmd `cmd:"" help:"Render a query template to JSON without sending it."`
+	Run     RunCmd     `cmd:"" help:"Benchmark a single query template with many concurrent clients."`
+	Folder  FolderCmd  `cmd:"" help:"Benchmark every query file in a folder and its subfolders."`
+	Single  SingleCmd  `cmd:"" help:"Perform a single search and print the response."`
+	Render  RenderCmd  `cmd:"" help:"Render a query template to JSON without sending it."`
+	Compare CompareCmd `cmd:"" help:"Compare two saved benchmark reports."`
 }
 
 func main() {

@@ -26,6 +26,9 @@ func runPhases(t *testing.T, report *PhaseReport, phases map[string][]sample.Sam
 		for _, s := range phases[name] {
 			require.NoError(t, report.Publish(s))
 		}
+		// A phase over in microseconds would print an absurd rate that
+		// overflows its column.
+		time.Sleep(5 * time.Millisecond)
 		require.NoError(t, report.FinishPhase(phase))
 	}
 	require.NoError(t, report.Finish())
