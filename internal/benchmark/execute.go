@@ -17,7 +17,7 @@ type ExecutionConfig struct {
 	// Runs the templates sequentially, one after another, instead of randomly.
 	Sequential bool
 	// Warmup is the number of seconds to run each template before its measured
-	// phase, or the whole mix once for random runs. Samples are discarded and
+	// phase, or once before a normal or random run. Samples are discarded and
 	// the measured request count does not apply.
 	Warmup int
 }
@@ -32,10 +32,14 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Start the mixed run's publishers after warmup so its progress and report
+	// Start a normal or random run's publishers after warmup so progress and report
 	// clocks cover only measurement. Sequential runs time each phase instead.
 	if !config.Sequential && config.Warmup > 0 {
-		if err := warmupRun(runCtx, config.RunConfig, config.Warmup, "query mix"); err != nil {
+		name := "query mix"
+		if len(config.RunConfig.Templates) == 1 {
+			name = config.RunConfig.Templates[0].Name
+		}
+		if err := warmupRun(runCtx, config.RunConfig, config.Warmup, name); err != nil {
 			return err
 		}
 		if err := runCtx.Err(); err != nil {

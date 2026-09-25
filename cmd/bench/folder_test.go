@@ -129,10 +129,4 @@ func TestFolderWarmupFlags(t *testing.T) {
 			require.Equal(t, tc.want, cli.Folder.Warmup)
 		})
 	}
-
-	var cli CLI
-	parser, err := kong.New(&cli)
-	require.NoError(t, err)
-	_, err = parser.Parse([]string{"run", "--node-url=http://localhost:9200", "--index-name=idx", "--query-template=q.json", "--requests-per-client=1", "--warmup=10"})
-	require.ErrorContains(t, err, "unknown flag --warmup")
 }
