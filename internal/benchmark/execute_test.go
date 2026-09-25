@@ -3,8 +3,11 @@ package benchmark
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -335,4 +338,120 @@ func TestExecuteMixedRunHasNoPhases(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, rec.phases)
 	require.Equal(t, 20, rec.samples["a"]+rec.samples["b"], "the count covers the whole run")
+}
+
+// warmupRecorder inspects traffic just before measurement starts.
+type warmupRecorder struct {
+	phaseRecorder
+	onStart func(publisher.Phase)
+}
+
+func (r *warmupRecorder) StartPhase(p publisher.Phase) error {
+	r.onStart(p)
+	return r.phaseRecorder.StartPhase(p)
+}
+
+type warmupTransport func(*http.Request) (*http.Response, error)
+
+func (f warmupTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestExecuteWarmsEachQueryWithAllClientsBeforeMeasuring(t *testing.T) {
+	t.Parallel()
+
+	var active, peak, served atomic.Int64
+	config := testRunConfig("http://node", countedOptions(3, 2, 2), testTemplate("a"), testTemplate("b"))
+	config.HTTPClient.Transport = warmupTransport(func(r *http.Request) (*http.Response, error) {
+		current := active.Add(1)
+		defer active.Add(-1)
+		for old := peak.Load(); current > old; old = peak.Load() {
+			if peak.CompareAndSwap(old, current) {
+				break
+			}
+		}
+		served.Add(1)
+		timer := time.NewTimer(10 * time.Millisecond)
+		defer timer.Stop()
+		select {
+		case <-r.Context().Done():
+			return nil, r.Context().Err()
+		case <-timer.C:
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(okResponse)), Header: make(http.Header)}, nil
+		}
+	})
+	summary := &publisher.Summary{Out: io.Discard, PhaseTiming: true}
+	lastStart := time.Now()
+	var previousServed int64
+	rec := &warmupRecorder{onStart: func(p publisher.Phase) {
+		require.GreaterOrEqual(t, time.Since(lastStart), time.Second, "each query gets a full warmup")
+		require.Greater(t, served.Load()-previousServed, int64(12), "warmup ignores the measured request count")
+		require.EqualValues(t, 3, peak.Load(), "warmup uses the configured client count")
+		require.Zero(t, active.Load(), "all warmup requests finish before measurement")
+		previousServed = served.Load()
+		lastStart = time.Now()
+	}}
+	require.NoError(t, Execute(context.Background(), ExecutionConfig{
+		RunConfig: config, Publishers: []publisher.Publisher{rec, summary}, Sequential: true, Warmup: 1,
+	}))
+	require.Equal(t, map[string]int{"a": 12, "b": 12}, rec.samples)
+	require.Equal(t, []string{"start a", "sample a", "finish a", "start b", "sample b", "finish b"}, rec.events)
+	results := summary.Calculate()
+	require.Equal(t, 24, results.Requests)
+	wallTime := summary.T1.Sub(summary.T0).Seconds()
+	require.LessOrEqual(t, results.ExecutionTimeMs/1000, wallTime-2, "warmup time is excluded")
+	require.Greater(t, results.QPS, 24/wallTime)
+}
+
+func TestExecuteWarmupStopsBeforeMeasurementOnCancellationOrFailure(t *testing.T) {
+	t.Parallel()
+	for _, interrupted := range []bool{false, true} {
+		t.Run(fmt.Sprint(interrupted), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var served atomic.Int64
+			config := testRunConfig("http://node", countedOptions(1, 1, 1), testTemplate("a"), testTemplate("b"))
+			sentinel := errors.New("warmup request failed")
+			config.HTTPClient.Transport = warmupTransport(func(r *http.Request) (*http.Response, error) {
+				served.Add(1)
+				if interrupted {
+					cancel()
+					return nil, ctx.Err()
+				}
+				return nil, sentinel
+			})
+			rec := &phaseRecorder{}
+			summary := &publisher.Summary{Out: io.Discard, PhaseTiming: true}
+			err := Execute(ctx, ExecutionConfig{RunConfig: config, Publishers: []publisher.Publisher{rec, summary}, Sequential: true, Warmup: 1})
+			if interrupted {
+				require.ErrorIs(t, err, context.Canceled)
+			} else {
+				require.ErrorIs(t, err, sentinel)
+			}
+			require.EqualValues(t, 1, served.Load())
+			require.Empty(t, rec.events)
+			require.Zero(t, summary.Calculate().Requests)
+			require.Zero(t, summary.Calculate().ExecutionTimeMs)
+		})
+	}
+}
+
+func TestExecuteRandomWarmsTheMixOnceBeforeTheFullMeasuredTimeout(t *testing.T) {
+	t.Parallel()
+
+	srv, served := mockNode(t)
+	config := testRunConfig(srv.URL, timedOptions(3, 1), testTemplate("a"), testTemplate("b"))
+	config.QPS = 30
+	summary := &publisher.Summary{Out: io.Discard}
+	rec := &phaseRecorder{}
+	started := time.Now()
+	err := Execute(context.Background(), ExecutionConfig{
+		RunConfig: config, Publishers: []publisher.Publisher{summary, rec}, Warmup: 1,
+	})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, summary.T0.Sub(started), time.Second, "measurement starts after one warmup")
+	require.GreaterOrEqual(t, summary.T1.Sub(summary.T0), time.Second, "measurement gets its own full timeout")
+	require.GreaterOrEqual(t, served.Load()-int64(summary.Calculate().Requests), int64(20), "warmup traffic is not reported")
+	require.InDelta(t, 30, summary.Calculate().Requests, 3, "the configured rate still applies")
+	require.NotZero(t, rec.samples["a"])
+	require.NotZero(t, rec.samples["b"])
+	require.Empty(t, rec.phases, "a random mix is one run without per-query phases")
 }

@@ -111,6 +111,7 @@ with Common Crawl data.
 | `--num-clients=4` | Send requests from four clients at once. The default is 16. |
 | `--requests-per-client=100` | Send 100 requests per client, multiplied by `--repeat-each-request`. |
 | `--benchmark-timeout=60` | Stop the run after 60 seconds. |
+| `--warmup=10` | Warm up for 10 seconds before measuring (`run` and `folder`). |
 | `--qps=200` | Limit the average rate to 200 requests per second across all clients. The actual rate may be lower. |
 | `--request-timeout=10` | Stop the run if a request takes longer than 10 seconds. |
 
@@ -197,6 +198,9 @@ To run all 80 Common Crawl templates, point `--query-folder` at the parent
 folder, `assets/query/templates/cc-wet`. With `--benchmark-timeout=30` instead of
 a request count, each template runs for 30 seconds, so the whole run takes about
 40 minutes.
+
+Add `--warmup=10` to warm up each query file for 10 seconds immediately before
+measuring it.
 
 ### Run a mix of queries
 

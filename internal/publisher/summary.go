@@ -47,6 +47,10 @@ type Summary struct {
 
 	Meta ReportMeta
 
+	// PhaseTiming measures only query phases, excluding warmup and gaps between
+	// phases. Report timestamps still describe the entire run.
+	PhaseTiming bool
+
 	T0 time.Time
 	T1 time.Time
 
@@ -255,8 +259,19 @@ func latency(durations []time.Duration) Latency {
 	}
 }
 
+func (p *Summary) executionTime() time.Duration {
+	if !p.PhaseTiming {
+		return p.T1.Sub(p.T0)
+	}
+	var duration time.Duration
+	for _, phaseDuration := range p.phaseDurations {
+		duration += phaseDuration
+	}
+	return duration
+}
+
 func (p *Summary) Calculate() Results {
-	executionTime := p.T1.Sub(p.T0)
+	executionTime := p.executionTime()
 
 	perQuery := make([]PerQueryResult, 0, len(p.perQuery))
 	for name, stats := range p.perQuery {
@@ -340,7 +355,7 @@ func (p *Summary) Print() {
 	_, _ = fmt.Fprintf(w, "Errors:          %d (%.2f%%)\n", s.Errors, s.ErrorRate*100)
 	_, _ = fmt.Fprintf(w, "Statuses:        %s\n", formatStatusCounts(s.StatusCounts))
 	_, _ = fmt.Fprintf(w, "q/s:             %.2f\n", s.QPS)
-	_, _ = fmt.Fprintf(w, "Execution Time:  %v\n", p.T1.Sub(p.T0))
+	_, _ = fmt.Fprintf(w, "Execution Time:  %v\n", p.executionTime())
 	_, _ = fmt.Fprintf(w, "Took Avg:        %.2fms\n", s.TookAvgMs)
 	_, _ = fmt.Fprintf(w, "Client Latency:  %s\n", formatLatency(s.ClientLatencyMs))
 	_, _ = fmt.Fprintf(w, "HasHits:         %d (%.1f%%)\n", s.HasHits, s.HitsRatio*100)
