@@ -198,6 +198,9 @@ folder, `assets/query/templates/cc-wet`. With `--benchmark-timeout=30` instead o
 a request count, each template runs for 30 seconds, so the whole run takes about
 40 minutes.
 
+Add `--warmup=10` to warm up each query file for 10 seconds immediately before
+measuring it.
+
 ### Run a mix of queries
 
 Add `--random` to mix the query files instead. Each request then picks a query

@@ -2,6 +2,8 @@ package benchmark
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/publisher"
 	"github.com/Vesiro/vesiro-benchmarker/internal/query"
@@ -14,11 +16,32 @@ type ExecutionConfig struct {
 
 	// Runs the templates sequentially, one after another, instead of randomly.
 	Sequential bool
+	// Warmup is the number of seconds to run each template before its measured
+	// phase, or the whole mix once for random runs. Samples are discarded and
+	// the measured request count does not apply.
+	Warmup int
 }
 
 func Execute(ctx context.Context, config ExecutionConfig) (err error) {
+	if config.Warmup < 0 {
+		return fmt.Errorf("warmup must be zero or greater")
+	}
+	if err := config.RunConfig.Validate(); err != nil {
+		return err
+	}
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// Start the mixed run's publishers after warmup so its progress and report
+	// clocks cover only measurement. Sequential runs time each phase instead.
+	if !config.Sequential && config.Warmup > 0 {
+		if err := warmupRun(runCtx, config.RunConfig, config.Warmup, "query mix"); err != nil {
+			return err
+		}
+		if err := runCtx.Err(); err != nil {
+			return err
+		}
+	}
 
 	startedPublishers := make([]publisher.Publisher, 0, len(config.Publishers))
 	defer func() {
@@ -39,16 +62,20 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 		return publishRun(runCtx, config.RunConfig, startedPublishers)
 	}
 
-	// The loop below would quietly do nothing without templates.
-	if err := config.RunConfig.Validate(); err != nil {
-		return err
-	}
-
 	templates := config.RunConfig.Templates
 	for i, tmpl := range templates {
 		phase := publisher.Phase{Number: i + 1, Count: len(templates), Name: tmpl.Name}
 		phaseConfig := config.RunConfig
 		phaseConfig.Templates = []query.Template{tmpl}
+
+		if config.Warmup > 0 {
+			if err := warmupRun(runCtx, phaseConfig, config.Warmup, phase.Name); err != nil {
+				return err
+			}
+		}
+		if err := runCtx.Err(); err != nil {
+			return err
+		}
 
 		if err := forEachPhaseObserver(startedPublishers, func(o publisher.PhaseObserver) error {
 			return o.StartPhase(phase)
@@ -65,6 +92,20 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 		}
 	}
 
+	return nil
+}
+
+// warmupRun uses the same clients, templates and load settings as measurement,
+// replacing its limits with a dedicated timer and discarding all samples.
+func warmupRun(ctx context.Context, config RunConfig, seconds int, name string) error {
+	config.RequestsPerClient = nil
+	config.BenchmarkTimeout = &seconds
+	if config.Progress != "none" {
+		log.Printf("Warming up %s for %d seconds with %d clients", name, seconds, config.NumClients)
+	}
+	if err := publishRun(ctx, config, nil); err != nil {
+		return fmt.Errorf("warmup %s: %w", name, err)
+	}
 	return nil
 }
 

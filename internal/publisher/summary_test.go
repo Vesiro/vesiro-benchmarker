@@ -370,3 +370,26 @@ func TestSummaryReportCarriesCommandAndLabel(t *testing.T) {
 	require.Equal(t, "folder", report.Command)
 	require.Equal(t, "before-upgrade", report.Label)
 }
+
+func TestSummaryPhaseTimingExcludesWarmupFromTextAndJSON(t *testing.T) {
+	t.Parallel()
+	summary := summaryOver(t, 20*time.Second,
+		newSample("a", 3, time.Millisecond, 1),
+		newSample("b", 3, time.Millisecond, 1),
+	)
+	summary.PhaseTiming = true
+	summary.phaseDurations = map[string]time.Duration{"a": time.Second, "b": time.Second}
+	results := summary.Calculate()
+	require.Equal(t, 2000.0, results.ExecutionTimeMs)
+	require.Equal(t, 1.0, results.QPS)
+	var out bytes.Buffer
+	summary.Out = &out
+	summary.Print()
+	require.Contains(t, out.String(), "Execution Time:  2s")
+	out.Reset()
+	require.NoError(t, summary.WriteJSON())
+	var report Report
+	require.NoError(t, json.Unmarshal(out.Bytes(), &report))
+	require.Equal(t, results, report.Results)
+	require.Equal(t, 20*time.Second, report.FinishedAt.Sub(report.StartedAt))
+}

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alecthomas/kong"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/query"
@@ -97,4 +98,41 @@ func TestLongestNameMeasuresTheWidestTemplateName(t *testing.T) {
 
 	require.Equal(t, len("multi-term/fuzzy.json"), longestName(templates))
 	require.Zero(t, longestName(nil))
+}
+
+func TestFolderWarmupFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args []string
+		want int
+		err  string
+	}{
+		{name: "disabled by default"},
+		{name: "seconds", args: []string{"--warmup=10"}, want: 10},
+		{name: "zero", args: []string{"--warmup=0"}},
+		{name: "negative", args: []string{"--warmup=-1"}, err: "warmup must be zero or greater"},
+		{name: "random", args: []string{"--warmup=10", "--random"}, want: 10},
+		{name: "client validation retained", args: []string{"--warmup=10", "--num-clients=0"}, err: "num clients must be greater than zero"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var cli CLI
+			parser, err := kong.New(&cli)
+			require.NoError(t, err)
+			args := []string{"folder", "--node-url=http://localhost:9200", "--index-name=idx", "--query-folder=queries", "--requests-per-client=1"}
+			_, err = parser.Parse(append(args, tc.args...))
+			if tc.err != "" {
+				require.ErrorContains(t, err, tc.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, cli.Folder.Warmup)
+		})
+	}
+
+	var cli CLI
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+	_, err = parser.Parse([]string{"run", "--node-url=http://localhost:9200", "--index-name=idx", "--query-template=q.json", "--requests-per-client=1", "--warmup=10"})
+	require.ErrorContains(t, err, "unknown flag --warmup")
 }
