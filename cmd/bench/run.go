@@ -13,6 +13,7 @@ type RunCmd struct {
 	targetFlags
 	queryFlags
 	saveFlags
+	metricsFlags
 	QueryTemplate string `required:"" help:"Template string used to generate query bodies."`
 	Warmup        int    `default:"0" help:"Warm up for this many seconds before measuring, using the configured clients. Zero disables warmup."`
 }
@@ -24,7 +25,7 @@ func (c *RunCmd) Validate() error {
 	if c.Warmup < 0 {
 		return fmt.Errorf("warmup must be zero or greater")
 	}
-	return nil
+	return c.metricsFlags.Validate()
 }
 
 func (c *RunCmd) Run() error {
@@ -43,7 +44,16 @@ func (c *RunCmd) Run() error {
 		return err
 	}
 
+	metrics, stopMetrics, err := c.serveMetrics(template.Name)
+	if err != nil {
+		return err
+	}
+	defer stopMetrics()
+
 	var publishers []publisher.Publisher
+	if metrics != nil {
+		publishers = append(publishers, metrics)
+	}
 	publishers, err = appendProgress(publishers, c.RequestOptions)
 	if err != nil {
 		return err

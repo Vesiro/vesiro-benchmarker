@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/benchmark"
 	"github.com/Vesiro/vesiro-benchmarker/internal/publisher"
@@ -32,6 +35,49 @@ func (t targetFlags) httpClient(numClients int) *http.Client {
 		Credentials:           t.User,
 		InsecureSkipTLSVerify: t.InsecureSkipTLSVerify,
 	}.Build()
+}
+
+// metricsFlags configure the Prometheus exporter. json:"-" keeps them out of
+// the logged config, which describes the load rather than where results go.
+type metricsFlags struct {
+	MetricsAddr     string `default:"" json:"-" help:"Serve Prometheus metrics at /metrics on this address, such as :9100. Empty disables the exporter."`
+	MetricsInterval int    `default:"5" json:"-" help:"Seconds between updates of the bench_qps metric."`
+}
+
+func (m metricsFlags) Validate() error {
+	if m.MetricsInterval <= 0 {
+		return fmt.Errorf("metrics interval must be greater than zero")
+	}
+	return nil
+}
+
+// serveMetrics starts the exporter when one is configured and returns the
+// publisher feeding it, or nil. query names the template of a single-template
+// run, or is empty. The listener is opened before the run so a taken port fails
+// fast. Call stop once the run is over.
+func (m metricsFlags) serveMetrics(query string) (metrics publisher.Publisher, stop func(), err error) {
+	if m.MetricsAddr == "" {
+		return nil, func() {}, nil
+	}
+
+	listener, err := net.Listen("tcp", m.MetricsAddr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("listen for metrics: %w", err)
+	}
+
+	prom := publisher.NewPrometheus(time.Duration(m.MetricsInterval) * time.Second)
+	prom.Query = query
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", prom.Handler())
+	server := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	go func() { _ = server.Serve(listener) }()
+	log.Printf("Serving Prometheus metrics on http://%s/metrics", listener.Addr())
+
+	return prom, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(ctx)
+	}, nil
 }
 
 // queryFlags are the flags that shape the generated query bodies.

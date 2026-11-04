@@ -268,6 +268,34 @@ run to check as `--contender`:
   --contender=results/2026-09-24T14-15-02_folder_cc-wet_after-upgrade.json
 ```
 
+## Watch a run in Prometheus
+
+Add `--metrics-addr` to `run` or `folder` to serve Prometheus metrics while
+the benchmark runs:
+
+```sh
+./bin/bench run \
+  --node-url=http://localhost:9200 \
+  --index-name=my-index \
+  --query-template=assets/query/templates/match_all.json \
+  --benchmark-timeout=600 \
+  --metrics-addr=:9100
+```
+
+Prometheus can then scrape `http://<bench-host>:9100/metrics`.
+
+| Metric | What it tells you |
+| --- | --- |
+| `bench_qps` | Requests per second over the last `--metrics-interval` seconds (default 5). |
+| `bench_requests_total` | Responses received, labelled by `query` and HTTP `status`. |
+| `bench_request_duration_seconds` | Histogram of client latency, labelled by `query`. |
+| `bench_running` | 1 once measuring starts, 0 before that and after the run. |
+| `bench_current_query` | 1, with the template being measured as its `query` label. A `folder` run switches it as it moves to the next query, and a `--random` run leaves it out. |
+
+The metrics cover measured requests only, not warmup. In a `folder` run,
+`bench_qps` drops while each query warms up. The exporter stops
+when `bench` exits, so give Prometheus a scrape interval shorter than the run.
+
 ## Saved defaults
 
 For settings you use often, copy [config.example.json](config.example.json) to
