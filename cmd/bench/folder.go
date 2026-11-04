@@ -53,7 +53,8 @@ func (c *FolderCmd) Run() error {
 	summary := newSummary("folder", c, c.RequestOptions, c.saveFlags, templates, seed)
 	summary.PhaseTiming = !c.Random
 
-	metrics, stopMetrics, err := c.serveMetrics()
+	// A sequential run names each template as its phase starts.
+	metrics, stopMetrics, err := c.serveMetrics("")
 	if err != nil {
 		return err
 	}

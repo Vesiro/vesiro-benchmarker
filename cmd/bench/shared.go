@@ -52,9 +52,10 @@ func (m metricsFlags) Validate() error {
 }
 
 // serveMetrics starts the exporter when one is configured and returns the
-// publisher feeding it, or nil. The listener is opened before the run so a
-// taken port fails fast. Call stop once the run is over.
-func (m metricsFlags) serveMetrics() (metrics publisher.Publisher, stop func(), err error) {
+// publisher feeding it, or nil. query names the template of a single-template
+// run, or is empty. The listener is opened before the run so a taken port fails
+// fast. Call stop once the run is over.
+func (m metricsFlags) serveMetrics(query string) (metrics publisher.Publisher, stop func(), err error) {
 	if m.MetricsAddr == "" {
 		return nil, func() {}, nil
 	}
@@ -65,6 +66,7 @@ func (m metricsFlags) serveMetrics() (metrics publisher.Publisher, stop func(), 
 	}
 
 	prom := publisher.NewPrometheus(time.Duration(m.MetricsInterval) * time.Second)
+	prom.Query = query
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", prom.Handler())
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}

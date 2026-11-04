@@ -44,7 +44,7 @@ func (c *RunCmd) Run() error {
 		return err
 	}
 
-	metrics, stopMetrics, err := c.serveMetrics()
+	metrics, stopMetrics, err := c.serveMetrics(template.Name)
 	if err != nil {
 		return err
 	}

@@ -290,6 +290,7 @@ Prometheus can then scrape `http://<bench-host>:9100/metrics`.
 | `bench_requests_total` | Responses received, labelled by `query` and HTTP `status`. |
 | `bench_request_duration_seconds` | Histogram of client latency, labelled by `query`. |
 | `bench_running` | 1 once measuring starts, 0 before that and after the run. |
+| `bench_current_query` | 1, with the template being measured as its `query` label. A `folder` run switches it as it moves to the next query, and a `--random` run leaves it out. |
 
 The metrics cover measured requests only, not warmup. In a `folder` run,
 `bench_qps` drops while each query warms up. The exporter stops

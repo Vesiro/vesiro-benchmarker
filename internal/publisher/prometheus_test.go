@@ -64,10 +64,47 @@ func TestPrometheusFinishResetsQPS(t *testing.T) {
 	require.Equal(t, 0.0, testutil.ToFloat64(p.qps), "a finished run sends no traffic")
 }
 
+func TestPrometheusReportsTheQueryOfASingleTemplateRun(t *testing.T) {
+	t.Parallel()
+
+	p := NewPrometheus(time.Hour)
+	p.Query = "match_all.json"
+	require.NoError(t, p.Start())
+
+	require.Equal(t, 1.0, testutil.ToFloat64(p.currentQuery.WithLabelValues("match_all.json")))
+
+	require.NoError(t, p.Finish())
+	require.Equal(t, 0, testutil.CollectAndCount(p.currentQuery), "a finished run has no current query")
+}
+
+func TestPrometheusReportsTheQueryOfEachPhase(t *testing.T) {
+	t.Parallel()
+
+	p := NewPrometheus(time.Hour)
+	require.NoError(t, p.Start())
+	t.Cleanup(func() { _ = p.Finish() })
+	require.Equal(t, 0, testutil.CollectAndCount(p.currentQuery), "no query before the first phase")
+
+	first := Phase{Number: 1, Count: 2, Name: "a.json"}
+	second := Phase{Number: 2, Count: 2, Name: "b.json"}
+
+	require.NoError(t, p.StartPhase(first))
+	require.Equal(t, 1, testutil.CollectAndCount(p.currentQuery))
+	require.Equal(t, 1.0, testutil.ToFloat64(p.currentQuery.WithLabelValues("a.json")))
+
+	require.NoError(t, p.FinishPhase(first))
+	require.Equal(t, 0, testutil.CollectAndCount(p.currentQuery), "no query between phases")
+
+	require.NoError(t, p.StartPhase(second))
+	require.Equal(t, 1, testutil.CollectAndCount(p.currentQuery), "only one query is current at a time")
+	require.Equal(t, 1.0, testutil.ToFloat64(p.currentQuery.WithLabelValues("b.json")))
+}
+
 func TestPrometheusHandlerServesTheMetrics(t *testing.T) {
 	t.Parallel()
 
 	p := NewPrometheus(time.Hour)
+	p.Query = "a.json"
 	require.NoError(t, p.Start())
 	t.Cleanup(func() { _ = p.Finish() })
 	require.NoError(t, p.Publish(newSample("a.json", 3, 5*time.Millisecond, 1)))
@@ -80,7 +117,7 @@ func TestPrometheusHandlerServesTheMetrics(t *testing.T) {
 	body, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
-	for _, name := range []string{"bench_requests_total", "bench_request_duration_seconds", "bench_qps", "bench_running"} {
+	for _, name := range []string{"bench_requests_total", "bench_request_duration_seconds", "bench_qps", "bench_running", "bench_current_query"} {
 		require.True(t, strings.Contains(string(body), name), "missing %s", name)
 	}
 }

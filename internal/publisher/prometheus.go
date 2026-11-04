@@ -19,11 +19,17 @@ import (
 type Prometheus struct {
 	Interval time.Duration
 
-	registry *prometheus.Registry
-	requests *prometheus.CounterVec
-	duration *prometheus.HistogramVec
-	qps      prometheus.Gauge
-	running  prometheus.Gauge
+	// Query names the template a single-template run sends, shown as the
+	// current query for the whole run. Sequential runs report each phase's
+	// template instead, and a random mix leaves it empty.
+	Query string
+
+	registry     *prometheus.Registry
+	requests     *prometheus.CounterVec
+	duration     *prometheus.HistogramVec
+	qps          prometheus.Gauge
+	running      prometheus.Gauge
+	currentQuery *prometheus.GaugeVec
 
 	count atomic.Int64
 	done  chan struct{}
@@ -51,8 +57,12 @@ func NewPrometheus(interval time.Duration) *Prometheus {
 			Name: "bench_running",
 			Help: "1 while a measured run is in progress, otherwise 0.",
 		}),
+		currentQuery: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bench_current_query",
+			Help: "1 for the query template being measured. Absent between templates and for a random mix.",
+		}, []string{"query"}),
 	}
-	p.registry.MustRegister(p.requests, p.duration, p.qps, p.running)
+	p.registry.MustRegister(p.requests, p.duration, p.qps, p.running, p.currentQuery)
 	return p
 }
 
@@ -65,6 +75,9 @@ func (p *Prometheus) Start() error {
 	p.count.Store(0)
 	p.done = make(chan struct{})
 	p.running.Set(1)
+	if p.Query != "" {
+		p.setCurrentQuery(p.Query)
+	}
 
 	p.wg.Add(1)
 	go func() {
@@ -93,7 +106,24 @@ func (p *Prometheus) Finish() error {
 	p.wg.Wait()
 	p.qps.Set(0)
 	p.running.Set(0)
+	p.currentQuery.Reset()
 	return nil
+}
+
+func (p *Prometheus) StartPhase(phase Phase) error {
+	p.setCurrentQuery(phase.Name)
+	return nil
+}
+
+func (p *Prometheus) FinishPhase(Phase) error {
+	p.currentQuery.Reset()
+	return nil
+}
+
+// setCurrentQuery replaces the current query, so only one is ever reported.
+func (p *Prometheus) setCurrentQuery(name string) {
+	p.currentQuery.Reset()
+	p.currentQuery.WithLabelValues(name).Set(1)
 }
 
 func (p *Prometheus) Publish(s sample.Sample) error {
