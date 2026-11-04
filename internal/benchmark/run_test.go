@@ -213,6 +213,54 @@ func TestRunSpreadsRequestsAcrossMultipleTemplates(t *testing.T) {
 	require.Len(t, names, 2, "both templates should be exercised across 50 requests")
 }
 
+func TestRunSpreadsRequestsEvenlyAcrossNodes(t *testing.T) {
+	t.Parallel()
+
+	first, firstServed := mockNode(t)
+	second, secondServed := mockNode(t)
+	third, thirdServed := mockNode(t)
+	// 2 clients * 6 requests * 2 repeats, rotated over 3 nodes
+	config := testRunConfig(first.URL, countedOptions(2, 6, 2))
+	config.NodeURLs = []string{first.URL, second.URL, third.URL}
+
+	collected, err := drain(t, context.Background(), config)
+
+	require.NoError(t, err)
+	require.Len(t, collected, 24)
+	require.EqualValues(t, 8, firstServed.Load())
+	require.EqualValues(t, 8, secondServed.Load())
+	require.EqualValues(t, 8, thirdServed.Load())
+}
+
+func TestRunSendsRepeatsToTheSameNode(t *testing.T) {
+	t.Parallel()
+
+	first, firstServed := mockNode(t)
+	second, secondServed := mockNode(t)
+	// 1 client * 1 request * 3 repeats
+	config := testRunConfig(first.URL, countedOptions(1, 1, 3))
+	config.NodeURLs = []string{first.URL, second.URL}
+
+	_, err := drain(t, context.Background(), config)
+
+	require.NoError(t, err)
+	require.EqualValues(t, 3, firstServed.Load())
+	require.EqualValues(t, 0, secondServed.Load())
+}
+
+func TestRunRejectsAnEmptyNodeURL(t *testing.T) {
+	t.Parallel()
+
+	srv, _ := mockNode(t)
+	config := testRunConfig(srv.URL, countedOptions(1, 1, 1))
+	config.NodeURLs = append(config.NodeURLs, "")
+
+	samples := make(chan sample.Sample, 1)
+	_, err := Run(context.Background(), config, samples)
+
+	require.ErrorContains(t, err, "node url must not be empty")
+}
+
 func TestRunRejectsOptionsWithNeitherLimit(t *testing.T) {
 	t.Parallel()
 

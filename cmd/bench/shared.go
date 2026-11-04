@@ -15,10 +15,10 @@ import (
 	"github.com/Vesiro/vesiro-benchmarker/internal/version"
 )
 
-// targetFlags are the flags needed to reach a single node and index.
+// targetFlags are the flags needed to reach the nodes and index under test.
 type targetFlags struct {
-	NodeURL   string `required:"" name:"node-url" help:"Target node URL to which requests will be sent."`
-	IndexName string `required:"" help:"Name of the index to target when sending requests."`
+	NodeURLs  []string `required:"" name:"node-url" help:"Target node URL to which requests will be sent. Repeat the flag to spread requests across several nodes."`
+	IndexName string   `required:"" help:"Name of the index to target when sending requests."`
 	// json:"-" keeps the password out of logConfig.
 	User                  string `default:"" json:"-" help:"Optional basic auth credentials as user:password."`
 	InsecureSkipTLSVerify bool   `default:"false" help:"Skip TLS certificate verification. Only for targets using self-signed certificates."`
@@ -58,7 +58,7 @@ func newRunConfig(
 	return benchmark.RunConfig{
 		RequestOptions:      opts,
 		HTTPClient:          target.httpClient(opts.NumClients),
-		NodeURL:             target.NodeURL,
+		NodeURLs:            target.NodeURLs,
 		IndexName:           target.IndexName,
 		Templates:           templates,
 		Seed:                seed,

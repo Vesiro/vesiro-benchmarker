@@ -88,7 +88,6 @@ func run(ctx context.Context, config RunConfig, samples chan<- sample.Sample) er
 
 			client := Client{
 				HTTPClient: config.HTTPClient,
-				NodeURL:    config.NodeURL,
 				Index:      config.IndexName,
 				Timeout:    ResolveTimeout(config.RequestTimeout),
 			}
@@ -100,6 +99,9 @@ func run(ctx context.Context, config RunConfig, samples chan<- sample.Sample) er
 				default:
 				}
 
+				// Rotate through the nodes, each client starting at a different
+				// one so the load spreads evenly. Repeats stay on the same node.
+				client.NodeURL = config.NodeURLs[(i+requestIndex)%len(config.NodeURLs)]
 				query := resolvers[requestRNG.Intn(len(resolvers))].Query()
 				for repeatIndex := 0; repeatIndex < config.RepeatEachRequest; repeatIndex++ {
 					// Every request counts against the rate, repeats included.

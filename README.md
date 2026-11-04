@@ -132,6 +132,24 @@ finishes. To limit the average rate to 200 requests per second for one minute, r
   --qps=200
 ```
 
+### Spread the load across several nodes
+
+Repeat `--node-url` to send requests to more than one node:
+
+```sh
+./bin/bench run \
+  --node-url=http://1.example.com:9200 \
+  --node-url=http://2.example.com:9200 \
+  --index-name=my-index \
+  --query-template=assets/query/templates/match_all.json \
+  --requests-per-client=100
+```
+
+Each client takes the nodes in turn, one request at a time, so requests are
+split evenly between the nodes. Repeats from `--repeat-each-request` go to
+the same node as the original request. The report covers all nodes together.
+`single` sends its request to each node in turn.
+
 ## Choose your queries
 
 The four commands use the same query template files:
@@ -255,6 +273,9 @@ run to check as `--contender`:
 For settings you use often, copy [config.example.json](config.example.json) to
 `config.json`. Anything set there no longer needs to be passed as a
 command-line flag.
+
+To target several nodes from `config.json`, give `node_url` a list:
+`"node_url": ["http://1.example.com:9200", "http://2.example.com:9200"]`.
 
 ## Best practises
 

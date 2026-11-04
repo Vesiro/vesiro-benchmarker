@@ -23,12 +23,6 @@ func (c *SingleCmd) Run() error {
 		return fmt.Errorf("create resolver: %w", err)
 	}
 
-	client := benchmark.Client{
-		HTTPClient: c.httpClient(1),
-		NodeURL:    c.NodeURL,
-		Index:      c.IndexName,
-	}
-
 	query := resolver.Query()
 
 	fmt.Println("Performing single request...")
@@ -41,11 +35,24 @@ func (c *SingleCmd) Run() error {
 	ctx, cancel := newSignalContext()
 	defer cancel()
 
-	s, err := client.Search(ctx, query)
-	if err != nil {
-		return fmt.Errorf("perform request: %w", err)
-	}
+	// Send the same query to every node, so each one's connection is checked.
+	httpClient := c.httpClient(1)
+	for _, nodeURL := range c.NodeURLs {
+		client := benchmark.Client{
+			HTTPClient: httpClient,
+			NodeURL:    nodeURL,
+			Index:      c.IndexName,
+		}
 
-	fmt.Println(s.Query.Vars, s.ClientDuration, s.Status, string(s.Body))
+		s, err := client.Search(ctx, query)
+		if err != nil {
+			return fmt.Errorf("perform request to %s: %w", nodeURL, err)
+		}
+
+		if len(c.NodeURLs) > 1 {
+			fmt.Println("Node:", nodeURL)
+		}
+		fmt.Println(s.Query.Vars, s.ClientDuration, s.Status, string(s.Body))
+	}
 	return nil
 }

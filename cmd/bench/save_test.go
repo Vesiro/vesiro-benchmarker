@@ -100,7 +100,7 @@ func testExecution(nodeURL string, perClient int, extra ...publisher.Publisher) 
 	summary.Diagnostics = &bytes.Buffer{}
 
 	return benchmark.ExecutionConfig{
-		RunConfig:  newRunConfig(targetFlags{NodeURL: nodeURL, IndexName: "idx"}, opts, templates, 1),
+		RunConfig:  newRunConfig(targetFlags{NodeURLs: []string{nodeURL}, IndexName: "idx"}, opts, templates, 1),
 		Publishers: append([]publisher.Publisher{summary}, extra...),
 	}, summary
 }
