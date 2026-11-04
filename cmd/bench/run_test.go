@@ -44,6 +44,54 @@ func TestRunWarmupFlags(t *testing.T) {
 	}
 }
 
+func TestRunNodeURLFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		args   []string
+		config string
+		want   []string
+	}{
+		{
+			name: "single",
+			args: []string{"--node-url=http://1.example.com:9200"},
+			want: []string{"http://1.example.com:9200"},
+		},
+		{
+			name: "repeated",
+			args: []string{"--node-url", "http://1.example.com:9200", "--node-url", "http://2.example.com:9200"},
+			want: []string{"http://1.example.com:9200", "http://2.example.com:9200"},
+		},
+		{
+			name:   "config string",
+			config: `{"node_url": "http://1.example.com:9200"}`,
+			want:   []string{"http://1.example.com:9200"},
+		},
+		{
+			name:   "config list",
+			config: `{"node_url": ["http://1.example.com:9200", "http://2.example.com:9200"]}`,
+			want:   []string{"http://1.example.com:9200", "http://2.example.com:9200"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var options []kong.Option
+			if tc.config != "" {
+				configPath := filepath.Join(t.TempDir(), "config.json")
+				require.NoError(t, os.WriteFile(configPath, []byte(tc.config), 0o644))
+				options = append(options, kong.Configuration(kong.JSON, configPath))
+			}
+			var cli CLI
+			parser, err := kong.New(&cli, options...)
+			require.NoError(t, err)
+			args := []string{"run", "--index-name=idx", "--query-template=q.json", "--requests-per-client=1"}
+			_, err = parser.Parse(append(args, tc.args...))
+			require.NoError(t, err)
+			require.Equal(t, tc.want, cli.Run.NodeURLs)
+		})
+	}
+}
+
 func TestRunWarmupPrecedesMeasurementAndIsExcludedFromSavedResults(t *testing.T) {
 	t.Parallel()
 	var served atomic.Int64

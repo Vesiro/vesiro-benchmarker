@@ -3,6 +3,7 @@ package benchmark
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/query"
@@ -65,7 +66,7 @@ func (o RequestOptions) TotalRequests() *int {
 type RunConfig struct {
 	RequestOptions
 	HTTPClient          *http.Client
-	NodeURL             string
+	NodeURLs            []string
 	IndexName           string
 	Templates           []query.Template
 	Seed                int64
@@ -79,8 +80,10 @@ func (c RunConfig) Validate() error {
 	switch {
 	case c.HTTPClient == nil:
 		return fmt.Errorf("http client is required")
-	case c.NodeURL == "":
+	case len(c.NodeURLs) == 0:
 		return fmt.Errorf("node url is required")
+	case slices.Contains(c.NodeURLs, ""):
+		return fmt.Errorf("node url must not be empty")
 	case c.IndexName == "":
 		return fmt.Errorf("index name is required")
 	case len(c.Templates) == 0:

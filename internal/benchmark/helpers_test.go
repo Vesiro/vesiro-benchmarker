@@ -56,7 +56,7 @@ func testRunConfig(nodeURL string, opts RequestOptions, templates ...query.Templ
 	return RunConfig{
 		RequestOptions:      opts,
 		HTTPClient:          HTTPClientConfig{NumClients: opts.NumClients}.Build(),
-		NodeURL:             nodeURL,
+		NodeURLs:            []string{nodeURL},
 		IndexName:           "idx",
 		Templates:           templates,
 		Seed:                42,

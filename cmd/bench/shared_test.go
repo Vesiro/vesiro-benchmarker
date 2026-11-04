@@ -29,7 +29,7 @@ func TestNewRunConfigProducesAValidConfig(t *testing.T) {
 
 	perClient := 25
 	config := newRunConfig(
-		targetFlags{NodeURL: "http://node:9200", IndexName: "cc-wet"},
+		targetFlags{NodeURLs: []string{"http://node:9200"}, IndexName: "cc-wet"},
 		benchmark.RequestOptions{
 			NumClients:        8,
 			RequestsPerClient: &perClient,
@@ -41,7 +41,7 @@ func TestNewRunConfigProducesAValidConfig(t *testing.T) {
 	)
 
 	require.NoError(t, config.Validate())
-	require.Equal(t, "http://node:9200", config.NodeURL)
+	require.Equal(t, []string{"http://node:9200"}, config.NodeURLs)
 	require.Equal(t, "cc-wet", config.IndexName)
 	require.Equal(t, int64(4232), config.Seed)
 	require.Len(t, config.Templates, 1)
@@ -55,7 +55,7 @@ func TestNewRunConfigWithoutTemplatesFailsValidation(t *testing.T) {
 
 	perClient := 1
 	config := newRunConfig(
-		targetFlags{NodeURL: "http://node:9200", IndexName: "cc-wet"},
+		targetFlags{NodeURLs: []string{"http://node:9200"}, IndexName: "cc-wet"},
 		benchmark.RequestOptions{
 			NumClients:        1,
 			RequestsPerClient: &perClient,
@@ -152,7 +152,7 @@ func TestLogConfigOmitsBasicAuthCredentials(t *testing.T) {
 
 	err := logConfig(RunCmd{
 		targetFlags: targetFlags{
-			NodeURL:   "http://node:9200",
+			NodeURLs:  []string{"http://node:9200"},
 			IndexName: "cc-wet",
 			User:      "elastic:s3cr3t",
 		},
@@ -168,7 +168,7 @@ func TestNewSummaryCarriesTheReportMetadata(t *testing.T) {
 	t.Parallel()
 
 	cmd := RunCmd{
-		targetFlags: targetFlags{NodeURL: "http://node:9200", IndexName: "cc-wet", User: "elastic:s3cr3t"},
+		targetFlags: targetFlags{NodeURLs: []string{"http://node:9200"}, IndexName: "cc-wet", User: "elastic:s3cr3t"},
 	}
 	opts := benchmark.RequestOptions{NumClients: 8, Output: "json"}
 
