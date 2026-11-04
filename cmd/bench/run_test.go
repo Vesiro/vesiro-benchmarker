@@ -27,6 +27,7 @@ func TestRunWarmupFlags(t *testing.T) {
 		{name: "zero", args: []string{"--warmup=0"}},
 		{name: "negative", args: []string{"--warmup=-1"}, err: "warmup must be zero or greater"},
 		{name: "client validation retained", args: []string{"--warmup=10", "--num-clients=0"}, err: "num clients must be greater than zero"},
+		{name: "metrics interval", args: []string{"--metrics-interval=0"}, err: "metrics interval must be greater than zero"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var cli CLI

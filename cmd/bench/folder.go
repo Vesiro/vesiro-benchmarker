@@ -16,6 +16,7 @@ type FolderCmd struct {
 	targetFlags
 	queryFlags
 	saveFlags
+	metricsFlags
 	QueryFolder string `required:"" name:"query-folder" help:"Folder containing raw JSON query files or template files. Subfolders are included."`
 	Random      bool   `default:"false" help:"Pick a query file at random for each request instead of running them one at a time. The request count or benchmark timeout then applies to the whole run, not to each file."`
 	Warmup      int    `default:"0" help:"Warm up each query for this many seconds before measuring, using the configured clients. With --random, warm up the whole query mix once. Zero disables warmup."`
@@ -28,7 +29,7 @@ func (c *FolderCmd) Validate() error {
 	if c.Warmup < 0 {
 		return fmt.Errorf("warmup must be zero or greater")
 	}
-	return nil
+	return c.metricsFlags.Validate()
 }
 
 func (c *FolderCmd) Run() error {
@@ -52,7 +53,16 @@ func (c *FolderCmd) Run() error {
 	summary := newSummary("folder", c, c.RequestOptions, c.saveFlags, templates, seed)
 	summary.PhaseTiming = !c.Random
 
+	metrics, stopMetrics, err := c.serveMetrics()
+	if err != nil {
+		return err
+	}
+	defer stopMetrics()
+
 	var publishers []publisher.Publisher
+	if metrics != nil {
+		publishers = append(publishers, metrics)
+	}
 	if c.Random {
 		publishers, err = appendProgress(publishers, c.RequestOptions)
 		if err != nil {
