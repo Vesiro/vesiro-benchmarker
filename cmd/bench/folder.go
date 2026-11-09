@@ -16,9 +16,10 @@ type FolderCmd struct {
 	targetFlags
 	queryFlags
 	saveFlags
-	QueryFolder string `required:"" name:"query-folder" help:"Folder containing raw JSON query files or template files. Subfolders are included."`
-	Random      bool   `default:"false" help:"Pick a query file at random for each request instead of running them one at a time. The request count or benchmark timeout then applies to the whole run, not to each file."`
-	Warmup      int    `default:"0" help:"Warm up each query for this many seconds before measuring, using the configured clients. With --random, warm up the whole query mix once. Zero disables warmup."`
+	ControlSocket string `name:"control-socket" json:"-" help:"Optional v1 measurement controller Unix socket."`
+	QueryFolder   string `required:"" name:"query-folder" help:"Folder containing raw JSON query files or template files. Subfolders are included."`
+	Random        bool   `default:"false" help:"Pick a query file at random for each request instead of running them one at a time. The request count or benchmark timeout then applies to the whole run, not to each file."`
+	Warmup        int    `default:"0" help:"Warm up each query for this many seconds before measuring, using the configured clients. With --random, warm up the whole query mix once. Zero disables warmup."`
 }
 
 func (c *FolderCmd) Validate() error {
@@ -74,7 +75,16 @@ func (c *FolderCmd) Run() error {
 	ctx, cancel := newSignalContext()
 	defer cancel()
 
+	var control *benchmark.Control
+	if c.ControlSocket != "" {
+		control, err = benchmark.DialControl(ctx, c.ControlSocket)
+		if err != nil {
+			return err
+		}
+		defer control.Close()
+	}
 	return executeAndSave(ctx, benchmark.ExecutionConfig{
+		Control:    control,
 		RunConfig:  newRunConfig(c.targetFlags, c.RequestOptions, templates, seed),
 		Publishers: publishers,
 		Sequential: !c.Random,

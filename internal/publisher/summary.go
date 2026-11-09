@@ -51,8 +51,11 @@ type Summary struct {
 	// phases. Report timestamps still describe the entire run.
 	PhaseTiming bool
 
-	T0 time.Time
-	T1 time.Time
+	Interrupted    bool
+	ExecutionError error
+	TimingStopped  bool
+	T0             time.Time
+	T1             time.Time
 
 	queries         int
 	ok              int
@@ -96,8 +99,21 @@ func (p *Summary) Start() error {
 	return nil
 }
 
-func (p *Summary) Finish() error {
+func (p *Summary) ExecutionOutcome(interrupted bool, err error) {
+	p.Interrupted = interrupted
+	p.ExecutionError = err
+}
+func (p *Summary) StopTiming() {
+	if p.phaseName != "" {
+		p.closePhase()
+	}
 	p.T1 = time.Now().UTC()
+	p.TimingStopped = true
+}
+func (p *Summary) Finish() error {
+	if !p.TimingStopped {
+		p.T1 = time.Now().UTC()
+	}
 	// A phase still open was cut short, but its rate is still worth having.
 	if p.phaseName != "" {
 		p.closePhase()
@@ -324,7 +340,12 @@ func (p *Summary) Calculate() Results {
 }
 
 func (p *Summary) Report() Report {
+	errText := ""
+	if p.ExecutionError != nil {
+		errText = p.ExecutionError.Error()
+	}
 	return Report{
+		Interrupted: p.Interrupted, Error: errText,
 		Version:    p.Meta.Version,
 		Command:    p.Meta.Command,
 		Label:      p.Meta.Label,

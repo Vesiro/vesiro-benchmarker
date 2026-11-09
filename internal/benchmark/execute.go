@@ -2,8 +2,10 @@ package benchmark
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/publisher"
 	"github.com/Vesiro/vesiro-benchmarker/internal/query"
@@ -11,6 +13,7 @@ import (
 )
 
 type ExecutionConfig struct {
+	Control    *Control
 	RunConfig  RunConfig
 	Publishers []publisher.Publisher
 
@@ -28,6 +31,9 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 	}
 	if err := config.RunConfig.Validate(); err != nil {
 		return err
+	}
+	if config.Control != nil && !config.Sequential && len(config.RunConfig.Templates) != 1 {
+		return fmt.Errorf("measurement control requires sequential or single-template execution")
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -47,14 +53,41 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 		}
 	}
 
+	activeName := ""
 	startedPublishers := make([]publisher.Publisher, 0, len(config.Publishers))
 	defer func() {
+		// Final reports must observe errors from every other publisher.
+		var reports []publisher.Publisher
 		for i := len(startedPublishers) - 1; i >= 0; i-- {
-			if finishErr := startedPublishers[i].Finish(); err == nil && finishErr != nil {
-				err = finishErr
+			p := startedPublishers[i]
+			if _, ok := p.(interface{ ExecutionOutcome(bool, error) }); ok {
+				reports = append(reports, p)
+				continue
 			}
+			err = errors.Join(err, p.Finish())
+		}
+		if activeName != "" && config.Control != nil {
+			for _, p := range reports {
+				if timing, ok := p.(interface{ StopTiming() }); ok {
+					timing.StopTiming()
+				}
+			}
+			cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			err = errors.Join(err, config.Control.exchange(cleanup, "aborted", activeName, err, 0))
+			cancel()
+		}
+		for _, p := range reports {
+			p.(interface{ ExecutionOutcome(bool, error) }).ExecutionOutcome(ctx.Err() != nil, err)
+			err = errors.Join(err, p.Finish())
 		}
 	}()
+	if !config.Sequential && config.Control != nil {
+		name := config.RunConfig.Templates[0].Name
+		if err := config.Control.exchange(runCtx, "ready", name, nil, 0); err != nil {
+			return err
+		}
+		activeName = name
+	}
 	for _, p := range config.Publishers {
 		if err := p.Start(); err != nil {
 			return err
@@ -63,7 +96,27 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 	}
 
 	if !config.Sequential {
-		return publishRun(runCtx, config.RunConfig, startedPublishers)
+		name := config.RunConfig.Templates[0].Name
+		start := time.Now()
+		phaseErr := publishRun(runCtx, config.RunConfig, startedPublishers)
+		elapsed := time.Since(start)
+		if config.Control != nil {
+			// Close the summary clock before completion waits.
+			for _, p := range startedPublishers {
+				if o, ok := p.(interface{ StopTiming() }); ok {
+					o.StopTiming()
+				}
+			}
+		}
+		outcome := "finished"
+		if phaseErr != nil {
+			outcome = "aborted"
+		}
+		cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		controlErr := config.Control.exchange(cleanup, outcome, name, phaseErr, elapsed)
+		activeName = ""
+		return errors.Join(phaseErr, controlErr)
 	}
 
 	templates := config.RunConfig.Templates
@@ -81,17 +134,42 @@ func Execute(ctx context.Context, config ExecutionConfig) (err error) {
 			return err
 		}
 
+		if err := config.Control.exchange(runCtx, "ready", phase.Name, nil, 0); err != nil {
+			return err
+		}
+		if config.Control != nil {
+			activeName = phase.Name
+		}
 		if err := forEachPhaseObserver(startedPublishers, func(o publisher.PhaseObserver) error {
 			return o.StartPhase(phase)
 		}); err != nil {
 			return err
 		}
-		if err := publishRun(runCtx, phaseConfig, startedPublishers); err != nil {
-			return err
+		start := time.Now()
+		phaseErr := publishRun(runCtx, phaseConfig, startedPublishers)
+		elapsed := time.Since(start)
+		if phaseErr != nil && config.Control == nil {
+			return phaseErr
 		}
-		if err := forEachPhaseObserver(startedPublishers, func(o publisher.PhaseObserver) error {
-			return o.FinishPhase(phase)
-		}); err != nil {
+		var finishErr error
+		if phaseErr == nil {
+			finishErr = forEachPhaseObserver(startedPublishers, func(o publisher.PhaseObserver) error { return o.FinishPhase(phase) })
+		} else {
+			for _, p := range startedPublishers {
+				if o, ok := p.(interface{ StopTiming() }); ok {
+					o.StopTiming()
+				}
+			}
+		}
+		outcome := "finished"
+		if phaseErr != nil || finishErr != nil {
+			outcome = "aborted"
+		}
+		cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		controlErr := config.Control.exchange(cleanup, outcome, phase.Name, errors.Join(phaseErr, finishErr), elapsed)
+		activeName = ""
+		cancel()
+		if err := errors.Join(phaseErr, finishErr, controlErr); err != nil {
 			return err
 		}
 	}
@@ -117,14 +195,20 @@ func warmupRun(ctx context.Context, config RunConfig, seconds int, name string) 
 // It returns once every sample is published, so nothing from this run can
 // arrive after it.
 func publishRun(ctx context.Context, config RunConfig, publishers []publisher.Publisher) error {
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	samples := make(chan sample.Sample, config.NumClients)
-	done, err := Run(ctx, config, samples)
+	done, err := Run(runCtx, config, samples)
 	if err != nil {
 		return err
 	}
 
 	for s := range samples {
 		if err := distributeSample(s, publishers); err != nil {
+			cancel()
+			for range samples {
+			}
+			<-done
 			return err
 		}
 	}
