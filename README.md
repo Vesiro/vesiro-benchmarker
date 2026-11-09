@@ -150,6 +150,16 @@ split evenly between the nodes. Repeats from `--repeat-each-request` go to
 the same node as the original request. The report covers all nodes together.
 `single` sends its request to each node in turn.
 
+### Turn the request cache off
+
+Elasticsearch caches the results of searches with `"size": 0`, such as
+aggregations, and answers a repeated one from its request cache. To measure
+every request, pass `--request-cache=false`: each search is sent with
+`?request_cache=false`, as Rally sends it for an operation with `cache: false`.
+`--request-cache=true` asks for the cache on every search, including those
+the node would not cache by default. The default, `--request-cache=default`,
+sends nothing and leaves the node's own default.
+
 ## Choose your queries
 
 The four commands use the same query template files:

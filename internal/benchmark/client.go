@@ -17,6 +17,10 @@ type Client struct {
 	HTTPClient *http.Client
 	NodeURL    string
 	Index      string
+	// RequestCache is sent as the request_cache URL parameter when set, so
+	// the node uses or skips its shard request cache as asked rather than
+	// by its default. Empty sends nothing.
+	RequestCache string
 
 	// Timeout bounds a single request, body read included. Zero leaves it
 	// bounded only by the context passed to Search.
@@ -25,6 +29,9 @@ type Client struct {
 
 func (c *Client) Search(ctx context.Context, q query.Query) (sample.Sample, error) {
 	url := fmt.Sprintf("%s/%s/_search", c.NodeURL, c.Index)
+	if c.RequestCache != "" {
+		url += "?request_cache=" + c.RequestCache
+	}
 	requestBody, err := q.Json()
 	if err != nil {
 		return sample.Sample{}, err

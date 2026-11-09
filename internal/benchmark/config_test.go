@@ -67,3 +67,21 @@ func TestPrepareQuerySupportsTemplateFiles(t *testing.T) {
 	require.Contains(t, body, "query")
 	require.Equal(t, true, body["track_total_hits"])
 }
+
+func TestRunConfigRefusesAnUnknownRequestCache(t *testing.T) {
+	t.Parallel()
+
+	perClient := 1
+	config := testRunConfig("http://node:9200", RequestOptions{
+		NumClients:        1,
+		RequestsPerClient: &perClient,
+		RepeatEachRequest: 1,
+		Progress:          "none",
+	})
+	for _, ok := range []string{"", "true", "false"} {
+		config.RequestCache = ok
+		require.NoError(t, config.Validate(), ok)
+	}
+	config.RequestCache = "default"
+	require.Error(t, config.Validate())
+}

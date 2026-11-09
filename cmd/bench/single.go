@@ -39,9 +39,10 @@ func (c *SingleCmd) Run() error {
 	httpClient := c.httpClient(1)
 	for _, nodeURL := range c.NodeURLs {
 		client := benchmark.Client{
-			HTTPClient: httpClient,
-			NodeURL:    nodeURL,
-			Index:      c.IndexName,
+			HTTPClient:   httpClient,
+			NodeURL:      nodeURL,
+			Index:        c.IndexName,
+			RequestCache: c.requestCache(),
 		}
 
 		s, err := client.Search(ctx, query)
