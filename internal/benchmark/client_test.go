@@ -58,6 +58,28 @@ func TestClientSearchTargetsTheIndexSearchEndpoint(t *testing.T) {
 	require.JSONEq(t, `{"query":{"match_all":{}}}`, gotBody)
 }
 
+func TestClientSearchSendsRequestCacheOnlyWhenSet(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		_, _ = io.WriteString(w, okResponse)
+	}))
+	t.Cleanup(srv.Close)
+
+	for _, tc := range []struct{ requestCache, want string }{
+		{"", ""},
+		{"false", "request_cache=false"},
+		{"true", "request_cache=true"},
+	} {
+		client := Client{HTTPClient: srv.Client(), NodeURL: srv.URL, Index: "idx", RequestCache: tc.requestCache}
+		_, err := client.Search(context.Background(), testQuery(t, testTemplate("t")))
+		require.NoError(t, err)
+		require.Equal(t, tc.want, gotQuery, "request cache %q", tc.requestCache)
+	}
+}
+
 func TestClientSearchLatencyIncludesTheBodyRead(t *testing.T) {
 	t.Parallel()
 

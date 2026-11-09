@@ -50,6 +50,23 @@ func TestNewRunConfigProducesAValidConfig(t *testing.T) {
 	require.Equal(t, 8, config.NumClients)
 }
 
+func TestNewRunConfigSendsRequestCacheOnlyWhenAsked(t *testing.T) {
+	t.Parallel()
+
+	perClient := 1
+	opts := benchmark.RequestOptions{NumClients: 1, RequestsPerClient: &perClient, RepeatEachRequest: 1, Progress: "none"}
+	for flag, want := range map[string]string{"default": "", "false": "false", "true": "true"} {
+		config := newRunConfig(
+			targetFlags{NodeURLs: []string{"http://node:9200"}, IndexName: "cc-wet", RequestCache: flag},
+			opts,
+			[]query.Template{testTemplate()},
+			1,
+		)
+		require.Equal(t, want, config.RequestCache, flag)
+		require.NoError(t, config.Validate())
+	}
+}
+
 func TestNewRunConfigWithoutTemplatesFailsValidation(t *testing.T) {
 	t.Parallel()
 

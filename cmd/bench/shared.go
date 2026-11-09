@@ -19,6 +19,8 @@ import (
 type targetFlags struct {
 	NodeURLs  []string `required:"" name:"node-url" help:"Target node URL to which requests will be sent. Repeat the flag to spread requests across several nodes."`
 	IndexName string   `required:"" help:"Name of the index to target when sending requests."`
+	// Rally's cache option: Elasticsearch caches size 0 searches by default.
+	RequestCache string `enum:"default,true,false" default:"default" help:"Send request_cache=true or false with every search, or nothing with default, leaving the node's own default (${enum})."`
 	// json:"-" keeps the password out of logConfig.
 	User                  string `default:"" json:"-" help:"Optional basic auth credentials as user:password."`
 	InsecureSkipTLSVerify bool   `default:"false" help:"Skip TLS certificate verification. Only for targets using self-signed certificates."`
@@ -32,6 +34,14 @@ func (t targetFlags) httpClient(numClients int) *http.Client {
 		Credentials:           t.User,
 		InsecureSkipTLSVerify: t.InsecureSkipTLSVerify,
 	}.Build()
+}
+
+// requestCache is the request_cache parameter to send, or empty for none.
+func (t targetFlags) requestCache() string {
+	if t.RequestCache == "default" {
+		return ""
+	}
+	return t.RequestCache
 }
 
 // queryFlags are the flags that shape the generated query bodies.
@@ -60,6 +70,7 @@ func newRunConfig(
 		HTTPClient:          target.httpClient(opts.NumClients),
 		NodeURLs:            target.NodeURLs,
 		IndexName:           target.IndexName,
+		RequestCache:        target.requestCache(),
 		Templates:           templates,
 		Seed:                seed,
 		SkipQueryValidation: true,

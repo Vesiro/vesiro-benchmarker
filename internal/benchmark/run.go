@@ -87,9 +87,10 @@ func run(ctx context.Context, config RunConfig, samples chan<- sample.Sample) er
 			}
 
 			client := Client{
-				HTTPClient: config.HTTPClient,
-				Index:      config.IndexName,
-				Timeout:    ResolveTimeout(config.RequestTimeout),
+				HTTPClient:   config.HTTPClient,
+				Index:        config.IndexName,
+				RequestCache: config.RequestCache,
+				Timeout:      ResolveTimeout(config.RequestTimeout),
 			}
 
 			for requestIndex := 0; config.RequestsPerClient == nil || requestIndex < *config.RequestsPerClient; requestIndex++ {

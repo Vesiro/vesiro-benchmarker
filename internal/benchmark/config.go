@@ -65,9 +65,12 @@ func (o RequestOptions) TotalRequests() *int {
 // RunConfig is everything Run needs to generate and send traffic.
 type RunConfig struct {
 	RequestOptions
-	HTTPClient          *http.Client
-	NodeURLs            []string
-	IndexName           string
+	HTTPClient *http.Client
+	NodeURLs   []string
+	IndexName  string
+	// RequestCache is the request_cache URL parameter: "true", "false", or
+	// empty to send none and leave the node's default.
+	RequestCache        string
 	Templates           []query.Template
 	Seed                int64
 	SkipQueryValidation bool
@@ -86,6 +89,8 @@ func (c RunConfig) Validate() error {
 		return fmt.Errorf("node url must not be empty")
 	case c.IndexName == "":
 		return fmt.Errorf("index name is required")
+	case !slices.Contains([]string{"", "true", "false"}, c.RequestCache):
+		return fmt.Errorf("request cache must be true, false or unset, not %q", c.RequestCache)
 	case len(c.Templates) == 0:
 		return fmt.Errorf("at least one query template is required")
 	default:
