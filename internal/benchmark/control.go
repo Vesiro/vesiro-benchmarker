@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,8 +11,9 @@ import (
 
 // Control is a dedicated measurement-boundary channel, separate from reports.
 type Control struct {
-	conn  net.Conn
-	phase uint64
+	conn   net.Conn
+	reader *bufio.Reader
+	phase  uint64
 }
 type boundary struct {
 	Version  int     `json:"version"`
@@ -63,8 +65,15 @@ func (c *Control) exchange(ctx context.Context, event, name string, runErr error
 	if err := json.NewEncoder(c.conn).Encode(msg); err != nil {
 		return fmt.Errorf("measurement control send: %w", err)
 	}
+	if c.reader == nil {
+		c.reader = bufio.NewReader(c.conn)
+	}
+	line, err := c.reader.ReadBytes('\n')
+	if err != nil {
+		return fmt.Errorf("measurement control acknowledgment: %w", err)
+	}
 	var ack boundary
-	if err := json.NewDecoder(c.conn).Decode(&ack); err != nil {
+	if err := json.Unmarshal(line, &ack); err != nil {
 		return fmt.Errorf("measurement control acknowledgment: %w", err)
 	}
 	if ack.Version != 1 || ack.Event != "ack" || ack.Phase != c.phase || ack.Template != name {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -16,6 +17,112 @@ import (
 	"github.com/Vesiro/vesiro-benchmarker/internal/publisher"
 	"github.com/stretchr/testify/require"
 )
+
+func TestControlWaitsForTheCompleteAcknowledgmentLine(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	control := &Control{conn: client}
+	decoder := json.NewDecoder(server)
+	for _, event := range []string{"ready", "finished", "ready", "finished"} {
+		result := make(chan error, 1)
+		go func() { result <- control.exchange(ctx, event, "a", nil, 0) }()
+		var msg boundary
+		require.NoError(t, decoder.Decode(&msg))
+		require.Equal(t, event, msg.Event)
+		msg.Event = "ack"
+		raw, err := json.Marshal(msg)
+		require.NoError(t, err)
+		_, err = server.Write(raw)
+		require.NoError(t, err)
+		select {
+		case err := <-result:
+			t.Fatalf("accepted an acknowledgment without its newline: %v", err)
+		case <-time.After(20 * time.Millisecond):
+		}
+		_, err = server.Write([]byte("\n"))
+		require.NoError(t, err)
+		require.NoError(t, <-result)
+	}
+}
+
+func TestControlRejectsAnUnterminatedAcknowledgment(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	result := make(chan error, 1)
+	go func() {
+		result <- (&Control{conn: client}).exchange(context.Background(), "ready", "a", nil, 0)
+	}()
+	var msg boundary
+	require.NoError(t, json.NewDecoder(server).Decode(&msg))
+	msg.Event = "ack"
+	raw, err := json.Marshal(msg)
+	require.NoError(t, err)
+	_, err = server.Write(raw)
+	require.NoError(t, err)
+	require.NoError(t, server.Close())
+	require.Error(t, <-result)
+}
+
+func TestAbortedPhaseDisplayExcludesAcknowledgmentDelay(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	config := testRunConfig("http://node", countedOptions(1, 1, 1), testTemplate("a"))
+	config.HTTPClient.Transport = warmupTransport(func(r *http.Request) (*http.Response, error) {
+		time.Sleep(20 * time.Millisecond)
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(okResponse)), Header: make(http.Header)}, nil
+	})
+	result := make(chan error, 1)
+	go func() {
+		decoder := json.NewDecoder(server)
+		for _, event := range []string{"ready", "aborted"} {
+			var msg boundary
+			if err := decoder.Decode(&msg); err != nil {
+				result <- err
+				return
+			}
+			if msg.Event != event {
+				result <- errors.New("wrong outcome")
+				return
+			}
+			if event == "aborted" {
+				time.Sleep(150 * time.Millisecond)
+			}
+			msg.Event = "ack"
+			msg.Error = ""
+			if err := json.NewEncoder(server).Encode(msg); err != nil {
+				result <- err
+				return
+			}
+		}
+		result <- nil
+	}()
+	var out bytes.Buffer
+	summary := &publisher.Summary{Out: io.Discard, PhaseTiming: true}
+	phase := &publisher.PhaseReport{Out: &out, Progress: publisher.ProgressConfig{Mode: "none"}}
+	sentinel := errors.New("publisher failed")
+	err := Execute(context.Background(), ExecutionConfig{
+		Control: &Control{conn: client}, RunConfig: config, Sequential: true,
+		Publishers: []publisher.Publisher{summary, phase, &recordingPublisher{publishErr: sentinel}},
+	})
+	require.ErrorIs(t, err, sentinel)
+	require.NoError(t, <-result)
+	fields := strings.Fields(out.String())
+	for i, field := range fields {
+		if field == "q/s" && i > 0 {
+			qps, err := strconv.ParseFloat(fields[i-1], 64)
+			require.NoError(t, err)
+			require.InEpsilon(t, summary.Calculate().QPS, qps, 0.1, "displayed QPS must exclude the controller wait")
+			require.Contains(t, out.String(), "(stopped)")
+			return
+		}
+	}
+	t.Fatalf("no QPS in phase display: %s", out.String())
+}
 
 func TestControlExcludesWarmupAndAcknowledgmentDelays(t *testing.T) {
 	for _, sequential := range []bool{false, true} {

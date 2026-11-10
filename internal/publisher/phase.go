@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/Vesiro/vesiro-benchmarker/internal/sample"
 )
@@ -122,16 +121,22 @@ func (p *PhaseReport) FinishPhase(Phase) error {
 	return p.closePhase(false)
 }
 
+func (p *PhaseReport) StopTiming() {
+	if p.results != nil && !p.results.TimingStopped {
+		p.results.StopTiming()
+	}
+}
+
 // closePhase prints the phase's row in place of its progress display. The
 // field widths fit the usual range of values, so rows only drift out of line
 // for extremes such as a p99 over 100 seconds.
 func (p *PhaseReport) closePhase(stopped bool) error {
+	p.StopTiming()
 	var err error
 	if p.progress != nil {
 		err = p.progress.Finish()
 	}
 
-	p.results.T1 = time.Now().UTC()
 	r := p.results.Calculate()
 	l := r.ClientLatencyMs
 	row := fmt.Sprintf("%s  %6d req  %5d err  %8.2f q/s    avg %8.2f  p50 %8.2f  p95 %8.2f  p99 %8.2f ms",
