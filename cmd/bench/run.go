@@ -13,6 +13,7 @@ type RunCmd struct {
 	targetFlags
 	queryFlags
 	saveFlags
+	ControlSocket string `name:"control-socket" json:"-" help:"Optional v1 measurement controller Unix socket."`
 	QueryTemplate string `required:"" help:"Template string used to generate query bodies."`
 	Warmup        int    `default:"0" help:"Warm up for this many seconds before measuring, using the configured clients. Zero disables warmup."`
 }
@@ -54,7 +55,16 @@ func (c *RunCmd) Run() error {
 	ctx, cancel := newSignalContext()
 	defer cancel()
 
+	var control *benchmark.Control
+	if c.ControlSocket != "" {
+		control, err = benchmark.DialControl(ctx, c.ControlSocket)
+		if err != nil {
+			return err
+		}
+		defer control.Close()
+	}
 	return executeAndSave(ctx, benchmark.ExecutionConfig{
+		Control:    control,
 		RunConfig:  newRunConfig(c.targetFlags, c.RequestOptions, []query.Template{template}, seed),
 		Publishers: publishers,
 		Warmup:     c.Warmup,
